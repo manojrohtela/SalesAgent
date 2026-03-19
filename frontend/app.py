@@ -392,14 +392,39 @@ def call_backend_analyze(
     uploaded_file: Optional[bytes] = None,
     use_demo: bool = True,
 ):
-    params = {"use_demo": str(use_demo).lower(), "question": question or ""}
-    files = None
-    if uploaded_file is not None:
-        files = {"file": ("dataset.csv", uploaded_file, "text/csv")}
+    try:
+        # NATIVELY RUN THE ENGINE IN-MEMORY (Bypasses Vercel/FastAPI entirely!)
+        # Perfect for deploying as a 100% monolithic app on Streamlit Community Cloud
+        import io
+        import pandas as pd
+        from backend.agent import _run_full_analysis, _ensure_demo_dataset, generate_demo_dataset
 
-    resp = requests.post(f"{BACKEND_URL}/analyze", params=params, files=files, timeout=60)
-    resp.raise_for_status()
-    return resp.json()
+        if uploaded_file is not None:
+            df = pd.read_csv(io.BytesIO(uploaded_file))
+        elif use_demo:
+            df = _ensure_demo_dataset()
+        else:
+            df = generate_demo_dataset()
+            
+        print("Running native LLM agent analysis...")
+        response = _run_full_analysis(df, user_question=question or "")
+        return {
+            "structured_report": response.structured_report,
+            "charts": response.charts,
+            "follow_up_questions": response.follow_up_questions
+        }
+    except Exception as e:
+        print(f"Fallback to API proxy failed: {e}")
+        # Legacy fallback if running purely as frontend
+        import requests
+        params = {"use_demo": str(use_demo).lower(), "question": question or ""}
+        files = None
+        if uploaded_file is not None:
+            files = {"file": ("dataset.csv", uploaded_file, "text/csv")}
+
+        resp = requests.post(f"{BACKEND_URL}/analyze", params=params, files=files, timeout=60)
+        resp.raise_for_status()
+        return resp.json()
 
 
 with st.sidebar:
