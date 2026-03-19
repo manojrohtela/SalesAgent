@@ -6,7 +6,7 @@ langchain-groq
 openai
 pydantic
 pandas
-numpy
+numpy==1.26.4
 python-multipart
 streamlit
 plotly
