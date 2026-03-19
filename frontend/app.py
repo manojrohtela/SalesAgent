@@ -200,36 +200,47 @@ def _load_df_from_upload_or_demo(uploaded: Optional[st.runtime.uploaded_file_man
 
 
 def _compute_kpis(df: pd.DataFrame) -> Dict[str, str]:
-    """Compute KPIs with flexible column support."""
+    """Compute KPIs with fully flexible column support."""
     kpis = {}
+    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+    categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
     
-    # Total revenue (look for numeric columns if revenue doesn't exist)
-    if "revenue" in df.columns and pd.api.types.is_numeric_dtype(df["revenue"]):
-        total_revenue = float(df["revenue"].sum())
-        kpis["total_revenue"] = f"${total_revenue:,.0f}"
+    metric_col = numeric_cols[0] if numeric_cols else "Records"
+    cat1_col = categorical_cols[0] if categorical_cols else "Category 1"
+    cat2_col = categorical_cols[1] if len(categorical_cols) > 1 else cat1_col
+
+    kpis["metric_name"] = metric_col.title()
+    kpis["cat1_name"] = cat1_col.title()
+    kpis["cat2_name"] = cat2_col.title() if len(categorical_cols) > 1 else cat1_col.title()
+    kpis["cat2_label"] = cat2_col.title() if len(categorical_cols) > 1 else "Segment"
+
+    # Total metric
+    if numeric_cols:
+        total_val = float(df[metric_col].sum())
+        prefix = "$" if "rev" in metric_col.lower() or "sales" in metric_col.lower() or "spend" in metric_col.lower() else ""
+        kpis["total_metric"] = f"{prefix}{total_val:,.0f}"
+        kpis["total_metric_raw"] = str(total_val)
+        kpis["metric_prefix"] = prefix
     else:
-        numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
-        if numeric_cols:
-            total_val = float(df[numeric_cols[0]].sum())
-            kpis["total_revenue"] = f"${total_val:,.0f}"
-        else:
-            kpis["total_revenue"] = "N/A"
+        kpis["total_metric"] = str(len(df))
+        kpis["total_metric_raw"] = str(len(df))
+        kpis["metric_prefix"] = ""
     
-    # Top product
-    if "product" in df.columns and "revenue" in df.columns:
-        by_product = df.groupby("product")["revenue"].sum().sort_values(ascending=False)
-        kpis["top_product"] = str(by_product.index[0])
+    # Top cat1
+    if categorical_cols and numeric_cols:
+        by_cat1 = df.groupby(cat1_col)[metric_col].sum().sort_values(ascending=False)
+        kpis["top_cat1"] = str(by_cat1.index[0])
     else:
-        kpis["top_product"] = "N/A"
+        kpis["top_cat1"] = "N/A"
     
-    # Strongest region
-    if "region" in df.columns and "revenue" in df.columns:
-        by_region = df.groupby("region")["revenue"].sum().sort_values(ascending=False)
-        kpis["strongest_region"] = str(by_region.index[0])
-        kpis["weakest_region"] = str(by_region.index[-1])
+    # Strongest/Weakest cat2
+    if categorical_cols and numeric_cols:
+        by_cat2 = df.groupby(cat2_col)[metric_col].sum().sort_values(ascending=False)
+        kpis["strongest_cat2"] = str(by_cat2.index[0])
+        kpis["weakest_cat2"] = str(by_cat2.index[-1])
     else:
-        kpis["strongest_region"] = "N/A"
-        kpis["weakest_region"] = "N/A"
+        kpis["strongest_cat2"] = "N/A"
+        kpis["weakest_cat2"] = "N/A"
     
     return kpis
 
@@ -237,19 +248,21 @@ def _compute_kpis(df: pd.DataFrame) -> Dict[str, str]:
 def _trend_direction(df: pd.DataFrame) -> str:
     """Determine trend direction with flexible column support."""
     try:
-        if "date" not in df.columns:
+        datetime_cols = df.select_dtypes(include=["datetime64"]).columns.tolist()
+        if not datetime_cols:
             return "N/A"
+        date_col = datetime_cols[0]
         
         numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
         if not numeric_cols:
             return "N/A"
+        metric_col = numeric_cols[0]
         
-        daily = df.groupby(df["date"].dt.date)[numeric_cols[0]].sum().reset_index(name="value")
+        daily = df.groupby(df[date_col].dt.date)[metric_col].sum().reset_index(name="value")
         if len(daily) < 10:
             return "mixed"
         
         x = range(len(daily))
-        # simple slope proxy: compare last 20% vs first 20%
         k = max(3, int(len(daily) * 0.2))
         start_avg = daily["value"].head(k).mean()
         end_avg = daily["value"].tail(k).mean()
@@ -265,10 +278,10 @@ def _trend_direction(df: pd.DataFrame) -> str:
 def _insight_bullets(df: pd.DataFrame, kpis: Dict[str, str]) -> List[str]:
     trend = _trend_direction(df)
     return [
-        f"Top product: **{kpis['top_product']}**",
-        f"Strongest region: **{kpis['strongest_region']}**",
-        f"Weakest region: **{kpis['weakest_region']}**",
-        f"Revenue trend: **{trend}**",
+        f"Top {kpis['cat1_name']}: **{kpis['top_cat1']}**",
+        f"Strongest {kpis.get('cat2_label', 'Segment')}: **{kpis['strongest_cat2']}**",
+        f"Weakest {kpis.get('cat2_label', 'Segment')}: **{kpis['weakest_cat2']}**",
+        f"{kpis['metric_name']} trend: **{trend}**",
     ]
 
 
@@ -463,23 +476,23 @@ else:
         f"""
 <div class="metric-grid">
   <div class="metric-card">
-    <div class="metric-label">Total Revenue</div>
-    <div class="metric-value" data-target="{kpis.get('total_revenue', 'N/A').replace('$', '').replace(',', '')}" data-prefix="$" id="kpi_total_revenue">$0</div>
-    <div class="metric-sub">All regions • All products</div>
+    <div class="metric-label">Total {kpis.get('metric_name', 'Metric')}</div>
+    <div class="metric-value" data-target="{kpis.get('total_metric_raw', '0')}" data-prefix="{kpis.get('metric_prefix', '')}" id="kpi_total_revenue">{kpis.get('total_metric', '0')}</div>
+    <div class="metric-sub">All regions • All categories</div>
   </div>
   <div class="metric-card">
-    <div class="metric-label">Top Product</div>
-    <div class="metric-value">{kpis['top_product']}</div>
-    <div class="metric-sub">Highest revenue driver</div>
+    <div class="metric-label">Top {kpis.get('cat1_name', 'Category')}</div>
+    <div class="metric-value">{kpis.get('top_cat1', 'N/A')}</div>
+    <div class="metric-sub">Highest volume driver</div>
   </div>
   <div class="metric-card">
-    <div class="metric-label">Strongest Region</div>
-    <div class="metric-value">{kpis['strongest_region']}</div>
-    <div class="metric-sub">Best regional performance</div>
+    <div class="metric-label">Strongest {kpis.get('cat2_label', 'Segment')}</div>
+    <div class="metric-value">{kpis.get('strongest_cat2', 'N/A')}</div>
+    <div class="metric-sub">Best performance</div>
   </div>
   <div class="metric-card">
-    <div class="metric-label">Weakest Region</div>
-    <div class="metric-value">{kpis['weakest_region']}</div>
+    <div class="metric-label">Weakest {kpis.get('cat2_label', 'Segment')}</div>
+    <div class="metric-value">{kpis.get('weakest_cat2', 'N/A')}</div>
     <div class="metric-sub">Primary growth opportunity</div>
   </div>
 </div>
@@ -512,100 +525,201 @@ else:
         height=0,
     )
 
-    main_col, chat_col = st.columns([3.2, 1.3], gap="large")
-    with main_col:
-        left, right = st.columns(2, gap="large")
-        with left:
-            st.markdown("<div class='panel'><div class='panel-title'>Data Visualization 1</div></div>", unsafe_allow_html=True)
-            if fig_trend is not None:
-                st.plotly_chart(fig_trend, use_container_width=True, config={"displayModeBar": False})
-            else:
-                st.info("No data available for this chart")
-        with right:
-            st.markdown("<div class='panel'><div class='panel-title'>Data Visualization 2</div></div>", unsafe_allow_html=True)
-            if fig_product is not None:
-                st.plotly_chart(fig_product, use_container_width=True, config={"displayModeBar": False})
-            else:
-                st.info("No data available for this chart")
-
-        st.markdown("<div class='panel'><div class='panel-title'>Data Visualization 3</div></div>", unsafe_allow_html=True)
+    # Expand visualizations to full width using 3 equally spaced columns
+    col1, col2, col3 = st.columns(3, gap="large")
+    with col1:
+        st.markdown("<div class='panel'><div class='panel-title'>Trend Analysis</div></div>", unsafe_allow_html=True)
+        if fig_trend is not None:
+            st.plotly_chart(fig_trend, use_container_width=True, config={"displayModeBar": False})
+        else:
+            st.info("No data available for this chart")
+    with col2:
+        st.markdown("<div class='panel'><div class='panel-title'>Performance Breakdown</div></div>", unsafe_allow_html=True)
+        if fig_product is not None:
+            st.plotly_chart(fig_product, use_container_width=True, config={"displayModeBar": False})
+        else:
+            st.info("No data available for this chart")
+    with col3:
+        st.markdown(f"<div class='panel'><div class='panel-title'>{kpis.get('cat2_label', 'Segment')} Comparison</div></div>", unsafe_allow_html=True)
         if fig_region is not None:
             st.plotly_chart(fig_region, use_container_width=True, config={"displayModeBar": False})
         else:
             st.info("No data available for this chart")
 
-        # Display dynamic chart if one was generated by AI query
-        if analysis is not None and analysis.get("charts", {}).get("dynamic_chart"):
-            try:
-                dynamic_chart_data = analysis["charts"]["dynamic_chart"]
+    # Display dynamic chart if one was generated by AI query
+    if analysis is not None and analysis.get("charts", {}).get("dynamic_chart"):
+        try:
+            dynamic_chart_data = analysis["charts"]["dynamic_chart"]
+            if isinstance(dynamic_chart_data, dict) and "data" in dynamic_chart_data:
+                chart_json = dynamic_chart_data["data"]
+            elif isinstance(dynamic_chart_data, str):
+                chart_json = dynamic_chart_data
+            else:
+                chart_json = None
+            
+            if chart_json:
+                if isinstance(chart_json, str):
+                    chart_json = json.loads(chart_json)
+                st.markdown("<br><div class='panel'><div class='panel-title'>AI-Generated Custom Chart</div></div>", unsafe_allow_html=True)
+                st.plotly_chart(chart_json, use_container_width=True, config={"displayModeBar": False})
+        except Exception as e:
+            st.warning(f"Could not render dynamic chart: {str(e)}")
+
+    # Full report & Insights
+    st.markdown("<br><div class='panel'><div class='panel-title'>Key Insights</div></div>", unsafe_allow_html=True)
+    for b in bullets:
+        st.markdown(f"- {b}")
+
+    if analysis is not None:
+        with st.expander("📝 View Full Strategic AI Analysis", expanded=False):
+            st.markdown(analysis.get("structured_report", ""))
+            if analysis.get("follow_up_questions"):
+                st.markdown("**Proactive follow-ups**")
+                for q in analysis.get("follow_up_questions", []):
+                    st.markdown(f"- {q}")
+    else:
+        st.info("Run analysis to generate the strategic AI report.")
+
+    # Apply Custom CSS for Floating Chat Box
+    st.markdown("""
+    <style>
+    /* Base Chat Container */
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"] {
+        position: fixed !important;
+        bottom: 35px !important;
+        right: 35px !important;
+        z-index: 999999 !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    /* COLLAPSED STATE (Floating Button) */
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:not(:has(details[open])) {
+        width: 65px !important;
+        height: 65px !important;
+        border-radius: 50% !important;
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+        box-shadow: 0 10px 40px rgba(99,102,241, 0.45) !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    }
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:not(:has(details[open])):hover {
+        transform: translateY(-4px) scale(1.02) !important;
+        box-shadow: 0 15px 50px rgba(99,102,241, 0.6) !important;
+    }
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:not(:has(details[open])) > details > summary {
+        height: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:not(:has(details[open])) > details > summary p {
+        font-size: 0 !important; /* hide the text */
+    }
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:not(:has(details[open])) > details > summary svg {
+        display: none !important; /* hide default chevron */
+    }
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:not(:has(details[open])) > details > summary::before {
+        content: '💬' !important;
+        font-size: 28px !important;
+        color: white !important;
+        position: absolute !important;
+    }
+
+    /* OPEN STATE (Chat Window) */
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:has(details[open]) {
+        width: 450px !important;
+        height: min(720px, 85vh) !important;
+        max-width: 90vw !important;
+        border-radius: 20px !important;
+        background-color: #0f172a !important;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.6) !important;
+        border: 1px solid rgba(255,255,255,0.15) !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:has(details[open]) > details {
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        border: none !important;
+        margin: 0 !important;
+    }
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:has(details[open]) > details > summary {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+        color: white !important;
+        padding: 18px 24px !important;
+        border-radius: 20px 20px 0 0 !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+        border: none !important;
+        margin-bottom: 0 !important;
+    }
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:has(details[open]) > details > summary p {
+        font-weight: 700 !important;
+        font-size: 1.15rem !important;
+        color: white !important;
+    }
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:has(details[open]) > details > summary svg {
+        display: none !important; /* hide default chevron */
+    }
+    /* Simple close 'X' */
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:has(details[open]) > details > summary::after {
+        content: '✖' !important;
+        color: rgba(255,255,255,0.8) !important;
+        font-size: 18px !important;
+        position: absolute !important;
+        right: 24px !important;
+    }
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpanderDetails"] {
+        padding: 16px !important;
+        background-color: #1e293b !important;
+        flex-grow: 1 !important;
+        overflow-y: auto !important;
+        border-radius: 0 0 20px 20px !important;
+    }
+    /* Additional fix for internal margins */
+    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpanderDetails"] > div > div {
+        gap: 0 !important; /* Tighter chat elements */
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Floating Chat Window via Native Expander
+    st.markdown("<div id='chat-expander-anchor'></div>", unsafe_allow_html=True)
+    with st.expander("💬 Ask AI Analyst", expanded=False):
+        st.markdown("<div style='font-size: 1.3rem; font-weight: 800; margin-bottom: 5px; color: white;'>AI Analyst ✨</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size: 0.85rem; color: #94a3b8; margin-bottom: 15px;'>Ask business queries or request custom charts.</div>", unsafe_allow_html=True)
+        
+        chat_container = st.container(height=480)
+        with chat_container:
+            if len(st.session_state.messages) == 0:
+                st.info("I'm ready! Some things you can ask me:\n\n- How to boost our weakest segments?\n- What's the general trend?\n- Create a pie chart for my categories.")
                 
-                # Check if it's a dict with "data" and "type" keys
-                if isinstance(dynamic_chart_data, dict) and "data" in dynamic_chart_data:
-                    chart_json = dynamic_chart_data["data"]
-                elif isinstance(dynamic_chart_data, str):
-                    # If it's already a JSON string, use it directly
-                    chart_json = dynamic_chart_data
-                else:
-                    chart_json = None
-                
-                if chart_json:
-                    # Parse the JSON and display
-                    if isinstance(chart_json, str):
-                        chart_json = json.loads(chart_json)
-                    
-                    st.markdown("<div class='panel'><div class='panel-title'>AI-Generated Chart</div></div>", unsafe_allow_html=True)
-                    st.plotly_chart(chart_json, use_container_width=True, config={"displayModeBar": False})
-            except Exception as e:
-                st.warning(f"Could not render dynamic chart: {str(e)}")
-
-        st.markdown("<div class='panel'><div class='panel-title'>Key Insights</div></div>", unsafe_allow_html=True)
-        for b in bullets:
-            st.markdown(f"- {b}")
-
-        if analysis is not None:
-            with st.expander("Full AI Analysis", expanded=False):
-                st.markdown(analysis.get("structured_report", ""))
-                if analysis.get("follow_up_questions"):
-                    st.markdown("**Proactive follow-ups**")
-                    for q in analysis.get("follow_up_questions", []):
-                        st.markdown(f"- {q}")
-        else:
-            st.info("Run analysis to generate the AI report.")
-
-    with chat_col:
-        st.markdown("<div class='panel'>", unsafe_allow_html=True)
-        st.markdown("<div class='chat-title'>AI Analyst</div>", unsafe_allow_html=True)
-        st.markdown("<div class='chat-sub'>Ask about the dataset. I'll answer concisely and reference what's in the charts.</div>", unsafe_allow_html=True)
-
-        chat_area = st.container()
-        with chat_area:
             for m in st.session_state.messages:
-                cls = "bubble-user" if m["role"] == "user" else "bubble-ai"
-                st.markdown(f"<div class='bubble {cls}'>{m['content']}</div>", unsafe_allow_html=True)
-
+                with st.chat_message(m["role"]):
+                    st.markdown(m["content"], unsafe_allow_html=True)
+                    
             if st.session_state.is_typing:
-                st.markdown(
-                    "<div class='typing'><div class='dot'></div><div class='dot'></div><div class='dot'></div></div>",
-                    unsafe_allow_html=True,
-                )
+                with st.chat_message("assistant"):
+                    st.markdown("🤔 *Analyzing data...*")
+                    
+        # Text input handling inside Popover (st.chat_input may snap to bottom of screen natively, so we use form)
+        with st.form("chat_form", clear_on_submit=True, border=False):
+            col_input, col_btn = st.columns([4, 1], gap="small")
+            with col_input:
+                q = st.text_input("Ask a question...", label_visibility="collapsed", placeholder="Type your request here...")
+            with col_btn:
+                submit = st.form_submit_button("Send", use_container_width=True)
+                
+            if submit and q and q.strip():
+                st.session_state.messages.append({"role": "user", "content": q.strip()})
+                st.session_state.is_typing = True
+                st.rerun()
 
-        st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
-
-        q = st.chat_input(
-            placeholder="Ask business questions about your data • Examples: Which product should we promote? Which region needs marketing? How can we increase sales?",
-            key="chat_input",
-        )
-
-        if q and q.strip():
-            st.session_state.messages.append({"role": "user", "content": q.strip()})
-            st.session_state.is_typing = True
-            st.rerun()
-
-        # If we're in typing mode, fetch the assistant response in the next run.
-        if st.session_state.is_typing:
-            last_user = next((m["content"] for m in reversed(st.session_state.messages) if m["role"] == "user"), "")
-            uploaded_bytes = uploaded.getvalue() if uploaded is not None else None
-        # If we're in typing mode, fetch the assistant response in the next run.
+        # Processing response in typing mode
         if st.session_state.is_typing:
             last_user = next((m["content"] for m in reversed(st.session_state.messages) if m["role"] == "user"), "")
             uploaded_bytes = uploaded.getvalue() if uploaded is not None else None
@@ -616,20 +730,17 @@ else:
                     use_demo=uploaded is None,
                 )
                 st.session_state.analysis = resp
-                # For Q&A, use full response. For reports, truncate to first 12 lines.
+                
+                # Check if chart got created dynamically, inform user in chat to check main screen
+                dynamic_chart_note = ""
+                if resp.get("charts", {}).get("dynamic_chart"):
+                    dynamic_chart_note = "\n\n*(I also generated a dynamic chart for you! Check the main dashboard.)*"
+                
                 report = (resp.get("structured_report") or "").strip()
-                if last_user.strip():
-                    # User asked a specific question - use full answer
-                    display_text = report
-                else:
-                    # No question - truncate full report for display
-                    display_text = "\n".join(report.splitlines()[:12]).strip()
+                display_text = report + dynamic_chart_note
                 st.session_state.messages.append({"role": "assistant", "content": display_text.replace("\n", "<br/>")})
             except Exception as e:
-                st.session_state.messages.append({"role": "assistant", "content": f"Couldn't reach the backend: {e}"})
+                st.session_state.messages.append({"role": "assistant", "content": f"Couldn't reach the backend: {str(e)}"})
             finally:
                 st.session_state.is_typing = False
                 st.rerun()
-
-        st.markdown("</div>", unsafe_allow_html=True)
-

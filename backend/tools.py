@@ -98,145 +98,56 @@ def find_datetime_columns(df: pd.DataFrame) -> List[str]:
     return df.select_dtypes(include=['datetime64']).columns.tolist()
 
 
+def generate_plotly_query(df: pd.DataFrame, question: str) -> Optional[str]:
+    """Use LLM to generate a Plotly Express query."""
+    schema = _get_dataframe_schema(df)
+    template = """You are a Python data visualization expert using Plotly Express (px).
+Your task is to write a single line of Python code that generates a Plotly Express chart for the user's question.
+
+DataFrame info:
+{schema}
+
+User question: {question}
+
+INSTRUCTIONS:
+1. Generate ONLY a valid px expression (e.g., px.bar(df.groupby('x')['y'].sum().reset_index(), x='x', y='y', title='...'))
+2. The dataframe is named "df"
+3. Return ONLY the px code, no explanation, no markdown backticks, no imports.
+4. If you need to aggregate data, do it inline within the px call, like above.
+"""
+    prompt = ChatPromptTemplate.from_template(template)
+    chain = prompt | get_llm()
+    try:
+        msg = chain.invoke({"schema": schema, "question": question})
+        code = getattr(msg, "content", str(msg)).strip()
+        if code.startswith("```"):
+            lines = code.split("\n")
+            code = "\n".join(lines[1:-1]).strip()
+        return code
+    except Exception as e:
+        logger.error(f"Failed to generate plotly query: {e}")
+        return None
+
 def generate_dynamic_chart(df: pd.DataFrame, question: str, chart_type: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """
-    Generate a Plotly chart dynamically based on user request.
-    Returns dict with chart object (serializable) or None if unable to generate.
-    
-    Detects chart type from question and generates appropriate visualization.
+    Generate a Plotly chart dynamically by creating exact px code via an LLM.
     """
     try:
-        q_lower = question.lower()
-        numeric_cols = find_numeric_columns(df)
-        categorical_cols = find_categorical_columns(df)
-        datetime_cols = find_datetime_columns(df)
-        
-        if not numeric_cols:
-            logger.warning("No numeric columns found for chart generation")
-            return None
-        
-        # Infer chart type from question if not provided
-        if not chart_type:
-            if "pie" in q_lower:
-                chart_type = "pie"
-            elif "bar" in q_lower:
-                chart_type = "bar"
-            elif "trend" in q_lower or "line" in q_lower or "over time" in q_lower:
-                chart_type = "line"
-            elif "scatter" in q_lower:
-                chart_type = "scatter"
-            elif "box" in q_lower or "distribution" in q_lower:
-                chart_type = "box"
-            else:
-                # Default: bar chart for categorical + numeric
-                chart_type = "bar"
-        
-        # Generate appropriate chart
-        chart_obj = None
-        
-        if chart_type == "pie" and categorical_cols and numeric_cols:
-            # Pie chart: categorical dimension with numeric value
-            cat_col = categorical_cols[0]
-            num_col = numeric_cols[0]
-            if "revenue" in q_lower or "sales" in q_lower:
-                num_col = next((c for c in numeric_cols if "revenue" in c.lower()), numeric_cols[0])
-            grouped = df.groupby(cat_col)[num_col].sum()
-            chart_obj = {
-                "type": "pie",
-                "data": px.pie(
-                    values=grouped.values,
-                    names=grouped.index,
-                    title=f"{num_col.title()} by {cat_col.title()}"
-                ).to_json()
-            }
-        
-        elif chart_type == "bar" and categorical_cols and numeric_cols:
-            # Bar chart
-            cat_col = categorical_cols[0]
-            num_col = numeric_cols[0]
-            if "revenue" in q_lower or "sales" in q_lower:
-                num_col = next((c for c in numeric_cols if "revenue" in c.lower()), numeric_cols[0])
-            grouped = df.groupby(cat_col)[num_col].sum().sort_values(ascending=False)
-            chart_obj = {
-                "type": "bar",
-                "data": px.bar(
-                    x=grouped.index,
-                    y=grouped.values,
-                    title=f"{num_col.title()} by {cat_col.title()}",
-                    labels={"x": cat_col.title(), "y": num_col.title()}
-                ).to_json()
-            }
-        
-        elif chart_type == "line" and (datetime_cols or categorical_cols) and numeric_cols:
-            # Line chart (trend)
-            num_col = numeric_cols[0]
-            if "revenue" in q_lower or "sales" in q_lower:
-                num_col = next((c for c in numeric_cols if "revenue" in c.lower()), numeric_cols[0])
-            
-            if datetime_cols:
-                time_col = datetime_cols[0]
-                df_sorted = df.sort_values(time_col)
-                chart_obj = {
-                    "type": "line",
-                    "data": px.line(
-                        df_sorted,
-                        x=time_col,
-                        y=num_col,
-                        title=f"{num_col.title()} Trend"
-                    ).to_json()
-                }
-            else:
-                # Use categorical as x-axis
-                cat_col = categorical_cols[0] if categorical_cols else df.columns[0]
-                chart_obj = {
-                    "type": "line",
-                    "data": px.line(
-                        df,
-                        x=cat_col,
-                        y=num_col,
-                        title=f"{num_col.title()} Trend"
-                    ).to_json()
-                }
-        
-        elif chart_type == "scatter" and len(numeric_cols) >= 2:
-            # Scatter plot
-            x_col = numeric_cols[0]
-            y_col = numeric_cols[1]
-            color_col = categorical_cols[0] if categorical_cols else None
-            chart_obj = {
-                "type": "scatter",
-                "data": px.scatter(
-                    df,
-                    x=x_col,
-                    y=y_col,
-                    color=color_col,
-                    title=f"{y_col.title()} vs {x_col.title()}"
-                ).to_json()
-            }
-        
-        elif chart_type == "box" and numeric_cols and categorical_cols:
-            # Box plot (distribution)
-            num_col = numeric_cols[0]
-            cat_col = categorical_cols[0]
-            chart_obj = {
-                "type": "box",
-                "data": px.box(
-                    df,
-                    x=cat_col,
-                    y=num_col,
-                    title=f"Distribution of {num_col.title()} by {cat_col.title()}"
-                ).to_json()
-            }
-        
-        if chart_obj:
-            logger.info(f"Generated {chart_type} chart for question: {question}")
-            return chart_obj
-        else:
-            logger.warning(f"Could not generate {chart_type} chart for: {question}")
+        code = generate_plotly_query(df, question)
+        if not code:
             return None
             
+        logger.info(f"Generated Plotly code: {code}")
+        
+        namespace = {"df": df, "px": px, "pd": pd, "np": np}
+        fig = eval(code, {"__builtins__": {}}, namespace)
+        
+        return {
+            "type": "dynamic",
+            "data": fig.to_json()
+        }
     except Exception as e:
-        logger.error(f"Error generating chart: {e}")
+        logger.error(f"Error executing chart code: {e}")
         return None
 
 
@@ -468,45 +379,48 @@ Remember: If user_question is not empty, answer ONLY the question in 1-3 sentenc
     return prompt | llm
 
 
-def _classify_question(question: str) -> str:
-    """Classify the question into DATA, BUSINESS_ANALYSIS, GENERAL, or CHART."""
-    q_lower = question.lower()
+def _classify_question(question: str, df: Optional[pd.DataFrame] = None) -> str:
+    """Classify the user's intent semantically using an LLM to completely avoid hardcoded keywords."""
+    if not question:
+        return "GENERAL"
     
-    # Check for chart requests FIRST
-    chart_keywords = ['chart', 'plot', 'graph', 'visualize', 'show this in', 'pie chart', 'bar chart', 'line chart', 'scatter', 'display']
+    # Fast path for obvious chart requests
+    q_lower = question.lower()
+    chart_keywords = ['chart', 'plot', 'graph', 'visualize', 'pie chart', 'bar chart', 'line chart', 'scatter']
     if any(keyword in q_lower for keyword in chart_keywords):
         return "CHART"
+        
+    schema = ""
+    if df is not None:
+        schema = f"The dataset has {len(df)} rows and columns: {list(df.columns)}."
     
-    # Keywords indicating business analysis - check BEFORE data keywords
-    # (because "increase sales" should be BUSINESS_ANALYSIS, not DATA)
-    analysis_keywords = [
-        'should we', 'should i', 'recommend', 'promote', 'strategy', 'investment', 'priority',
-        'which product should', 'where should', 'how to increase', 'needs attention',
-        'optimize', 'boost revenue', 'boost sales', 'grow sales', 'grow the',
-        'what should', 'why should', 'how can we', 'advice', 'best way',
-        'improve sales', 'improve revenue', 'increase sales', 'increase revenue',
-        'expand to', 'focus on', 'consider', 'think about'
-    ]
-    has_analysis_keywords = any(keyword in q_lower for keyword in analysis_keywords)
-    
-    if has_analysis_keywords:
-        return "BUSINESS_ANALYSIS"
-    
-    # Data columns that indicate direct data queries - check AFTER analysis keywords
-    data_keywords = {
-        'date', 'product', 'region', 'revenue', 'units_sold', 'marketing_spend',
-        'total', 'average', 'sum', 'count', 'max', 'min', 'highest', 'lowest',
-        'how many', 'what is the', 'show me', 'list', 'top', 'bottom',
-        'units', 'spend'
-    }
-    references_columns = any(col in q_lower for col in data_keywords)
-    
-    # If references data columns/keywords, likely DATA
-    if references_columns:
+    template = """You are a classification router for an AI business assistant.
+Classify the following user query EXCLUSIVELY into one of these three categories:
+
+1. "DATA": The user is asking a quantitative or factual question that must be answered by querying the dataset (e.g., finding the highest, lowest, average, totals, count, or specific records).
+2. "BUSINESS_ANALYSIS": The user is asking for strategic advice, qualitative opinions, business recommendations, or asking "what should we do?"
+3. "GENERAL": The user is just saying hello, asking who you are, or making a non-business statement.
+
+User Query: "{question}"
+Dataset Information: {schema}
+
+Return ONLY the exact category name (DATA, BUSINESS_ANALYSIS, or GENERAL) without quotes, markdown, or explanation.
+"""
+    try:
+        prompt = ChatPromptTemplate.from_template(template)
+        chain = prompt | get_llm()
+        msg = chain.invoke({"schema": schema, "question": question})
+        content = getattr(msg, "content", str(msg)).strip().upper()
+        
+        # Valid category matching
+        for valid in ["DATA", "BUSINESS_ANALYSIS", "GENERAL", "CHART"]:
+            if valid in content:
+                return valid
+                
+        return "DATA"  # Safest fallback for a BI agent
+    except Exception as e:
+        logger.error(f"Semantic classification failed, falling back: {e}")
         return "DATA"
-    
-    # Otherwise, GENERAL
-    return "GENERAL"
 
 
 def build_business_analysis_chain():
@@ -583,15 +497,21 @@ def _get_key_insights(df: pd.DataFrame, stats: Dict[str, Any]) -> str:
     """
     insights = []
     
-    # Pre-computed stats
+    # Pre-computed stats (Legacy backward compatibility)
     if 'top_product' in stats:
         insights.append(f"Top product: {stats['top_product']}")
     if 'weakest_product' in stats:
         insights.append(f"Weakest product: {stats['weakest_product']}")
-    if 'strongest_region' in stats:
-        insights.append(f"Strongest region: {stats['strongest_region']}")
-    if 'weakest_region' in stats:
-        insights.append(f"Weakest region: {stats['weakest_region']}")
+    
+    # Dynamic Stats
+    if 'top_cat1' in stats:
+        insights.append(f"Top {stats.get('cat1_name', 'Category')}: {stats['top_cat1']}")
+    if 'weakest_cat1' in stats:
+        insights.append(f"Weakest {stats.get('cat1_name', 'Category')}: {stats['weakest_cat1']}")
+    if 'strongest_cat2' in stats:
+        insights.append(f"Strongest {stats.get('cat2_label', 'Segment')}: {stats['strongest_cat2']}")
+    if 'weakest_cat2' in stats:
+        insights.append(f"Weakest {stats.get('cat2_label', 'Segment')}: {stats['weakest_cat2']}")
     
     if df is not None and len(df) > 0:
         # Auto-detect numeric columns for flexible CSV support
@@ -665,7 +585,7 @@ def generate_structured_ai_response(
     question = (user_question or "").strip()
     
     # Classify the question
-    question_type = _classify_question(question) if question else "NONE"
+    question_type = _classify_question(question, df) if question else "NONE"
     
     # Get key insights for context
     key_insights = _get_key_insights(df, stats_snapshot)
