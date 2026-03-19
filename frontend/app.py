@@ -1,6 +1,13 @@
+import sys
+import os
+
+# Fix Python Path resolution for Streamlit Community Cloud
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 import io
 import json
-import os
 import time
 from typing import Dict, List, Optional, Tuple
 
