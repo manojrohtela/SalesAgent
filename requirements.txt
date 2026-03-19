@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+langchain
+langchain-openai
+langchain-groq
+openai
+pydantic
+pandas
+numpy
+matplotlib
+python-multipart
+streamlit
+plotly
