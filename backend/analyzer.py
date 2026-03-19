@@ -1,11 +1,8 @@
 import os
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-plt.switch_backend("Agg")
 
 @dataclass
 class AnalysisResult:

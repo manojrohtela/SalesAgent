@@ -7,7 +7,6 @@ openai
 pydantic
 pandas
 numpy
-matplotlib
 python-multipart
 streamlit
 plotly
