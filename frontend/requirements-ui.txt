@@ -1,0 +1,7 @@
+# Frontend UI requirements specifically meant for Streamlit Community Cloud
+# Point your Streamlit Cloud config to this requirements file.
+requests
+pandas
+numpy==1.26.4
+streamlit
+plotly

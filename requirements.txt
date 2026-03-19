@@ -8,5 +8,3 @@ pydantic
 pandas
 numpy==1.26.4
 python-multipart
-streamlit
-plotly
