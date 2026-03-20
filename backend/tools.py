@@ -415,6 +415,21 @@ Return ONLY the exact category name (DATA, BUSINESS_ANALYSIS, or GENERAL) withou
         msg = chain.invoke({"schema": schema, "question": question})
         content = getattr(msg, "content", str(msg)).strip().upper()
         
+        # Fast path for advanced analytics features
+        q_lower = question.lower()
+        if "trend" in q_lower or "growth" in q_lower:
+            return "ADV_TREND"
+        if "correlation" in q_lower or "relationship" in q_lower:
+            return "ADV_CORRELATION"
+        if "prediction" in q_lower or "forecast" in q_lower:
+            return "ADV_FORECAST"
+        if "distribution" in q_lower or "spread" in q_lower:
+            return "ADV_DISTRIBUTION"
+        if "compare" in q_lower or "comparison" in q_lower:
+            return "ADV_COMPARE"
+        if "outlier" in q_lower or "anomaly" in q_lower:
+            return "ADV_OUTLIERS"
+            
         # Valid category matching
         for valid in ["DATA", "BUSINESS_ANALYSIS", "GENERAL", "CHART"]:
             if valid in content:
@@ -593,6 +608,15 @@ def generate_structured_ai_response(
     # Get key insights for context
     key_insights = _get_key_insights(df, stats_snapshot)
     
+    # Handle Advanced Analytics Intents
+    if question_type.startswith("ADV_"):
+        try:
+            adv_response, adv_chart = run_advanced_analytics(df, question_type, question)
+            if adv_response:
+                return adv_response, adv_chart
+        except Exception as e:
+            logger.warning(f"Advanced analytics failed (falling back): {e}")
+
     # Handle chart requests
     if question_type == "CHART":
         try:
@@ -771,8 +795,168 @@ def _generate_full_report(dataset_summary: str, stats_snapshot: Dict[str, Any]) 
         "- Increase weekend-focused promotions if weekend uplift is present.",
         "",
         "ACTION PLAN",
-        "1. Review region + product performance; shift 10–15% spend to highest ROI areas.",
-        "2. Launch 2–3 A/B tests on offers and channels in the weakest region.",
         "3. Monitor weekly trends and anomalies; operationalize learnings into a monthly playbook.",
     ]).strip()
+
+def run_advanced_analytics(df: pd.DataFrame, intent: str, question: str) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+    """Execute specialized quantitative analysis matching requested advanced intents."""
+    if df is None or len(df) == 0:
+        return "Not enough data for advanced analytics.", None
+
+    numeric_cols = find_numeric_columns(df)
+    date_cols = find_datetime_columns(df)
+    
+    if intent == "ADV_TREND":
+        if not date_cols or not numeric_cols:
+            return "Trend analysis requires both date and numeric columns in the dataset.", None
+            
+        date_col = date_cols[0]
+        val_col = next((c for c in numeric_cols if 'revenue' in c.lower() or 'sales' in c.lower()), numeric_cols[0])
+        
+        # Convert to datetime and sort
+        df_copy = df.copy()
+        df_copy[date_col] = pd.to_datetime(df_copy[date_col], errors="coerce")
+        df_sorted = df_copy.dropna(subset=[date_col]).sort_values(date_col)
+        
+        # Group by Period (Monthly)
+        df_group = df_sorted.set_index(date_col).resample('ME')[val_col].sum().reset_index()
+        
+        if len(df_group) < 2:
+            return "Not enough date variance to compute a meaningful trend.", None
+            
+        df_group['growth'] = df_group[val_col].pct_change() * 100
+        df_group['moving_avg'] = df_group[val_col].rolling(window=min(3, len(df_group))).mean()
+        
+        avg_growth = df_group['growth'].mean()
+        
+        fig = px.line(df_group, x=date_col, y=[val_col, 'moving_avg'], 
+                      title=f"{val_col.title()} Trend Analysis",
+                      labels={"value": val_col.title(), "variable": "Line Type"},
+                      template="plotly_dark")
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        
+        direction = "upward trend" if avg_growth > 0 else "downward trend"
+        explanation = f"**Trend Analysis**\n\n{val_col.title()} shows a {direction} with an average growth rate of {avg_growth:.1f}% per period. "
+        explanation += f"The latest period recorded {df_group[val_col].iloc[-1]:,.2f}."
+        
+        return explanation, json.loads(fig.to_json())
+        
+    elif intent == "ADV_CORRELATION":
+        if len(numeric_cols) < 2:
+            return "Correlation analysis requires at least two numeric columns.", None
+            
+        corr_matrix = df[numeric_cols].corr()
+        
+        # Find strongest correlation ignoring self-correlation (diagonal)
+        mask = np.ones(corr_matrix.shape, dtype=bool)
+        np.fill_diagonal(mask, 0)
+        
+        max_corr_idx = corr_matrix.where(mask).abs().unstack().idxmax()
+        if pd.isna(max_corr_idx).any():
+            return "No valid correlation could be computed between numerical fields.", None
+            
+        col1, col2 = max_corr_idx
+        score = corr_matrix.loc[col1, col2]
+        
+        fig = px.scatter(df, x=col1, y=col2, trendline="ols",
+                         title=f"Correlation: {col1.title()} vs {col2.title()}",
+                         template="plotly_dark")
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        
+        strength = "strong" if abs(score) > 0.7 else "moderate" if abs(score) > 0.4 else "weak"
+        rel_type = "positive" if score > 0 else "negative"
+        
+        explanation = f"**Correlation Analysis**\n\n{col1.title()} and {col2.title()} have a {strength} {rel_type} correlation (score: {score:.2f})."
+        return explanation, json.loads(fig.to_json())
+        
+    elif intent == "ADV_FORECAST":
+        if not date_cols or not numeric_cols:
+            return "Forecasting requires a timeseries dataset (both date and numeric columns).", None
+            
+        date_col = date_cols[0]
+        val_col = next((c for c in numeric_cols if 'revenue' in c.lower() or 'sales' in c.lower()), numeric_cols[0])
+        
+        df_copy = df.copy()
+        df_copy[date_col] = pd.to_datetime(df_copy[date_col], errors="coerce")
+        df_sorted = df_copy.dropna(subset=[date_col]).sort_values(date_col)
+        df_group = df_sorted.set_index(date_col).resample('ME')[val_col].sum().reset_index()
+        
+        if len(df_group) < 3:
+            return "Not enough historical data points for reliable forecasting.", None
+            
+        x = np.arange(len(df_group))
+        y = df_group[val_col].values
+        
+        # Simple Linear Regression fit
+        z = np.polyfit(x, y, 1)
+        p = np.poly1d(z)
+        
+        next_x = len(df_group)
+        next_y = p(next_x)
+        
+        df_group['Trend'] = p(x)
+        
+        # Determine next interval date roughly
+        next_date = df_group[date_col].iloc[-1] + pd.DateOffset(months=1)
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df_group[date_col], y=df_group[val_col], name='Actual', mode='lines+markers'))
+        fig.add_trace(go.Scatter(x=df_group[date_col], y=df_group['Trend'], name='Trend', line=dict(dash='dash')))
+        fig.add_trace(go.Scatter(x=[next_date], y=[next_y], name='Forecast', mode='markers', marker=dict(size=12, symbol='star', color='yellow')))
+        
+        fig.update_layout(title=f"Forecast Projection: {val_col.title()}", template="plotly_dark",
+                          paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        
+        explanation = f"**Forecasting Analysis**\n\nBased on linear regression of historical data, the forecast suggests the next period ends around {next_date.strftime('%B %Y')} reaching approximately **${next_y:,.2f}**."
+        return explanation, json.loads(fig.to_json())
+        
+    elif intent == "ADV_DISTRIBUTION" or intent == "ADV_OUTLIERS":
+        if not numeric_cols:
+            return "Distribution/Outlier analysis requires numeric columns.", None
+            
+        val_col = next((c for c in numeric_cols if 'revenue' in c.lower() or 'sales' in c.lower()), numeric_cols[0])
+        
+        mean_val = df[val_col].mean()
+        median_val = df[val_col].median()
+        std_val = df[val_col].std()
+        
+        # Extreme Outlier detection (Z-score > 2.5)
+        outliers = df[np.abs(df[val_col] - mean_val) > (2.5 * std_val)]
+        
+        fig = px.histogram(df, x=val_col, marginal="box", title=f"Distribution Profile of {val_col.title()}", template="plotly_dark")
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        
+        explanation = f"**Distribution & Outlier Analysis**\n\nThe {val_col.title()} variable demonstrates a mean of {mean_val:,.2f} and a median of {median_val:,.2f}, with a standard deviation indicating spread of {std_val:,.2f}. "
+        
+        if len(outliers) > 0:
+            explanation += f"\n\n🚨 **{len(outliers)} statistical outliers** were detected operating at extreme variance from the mean distribution."
+        else:
+            explanation += "\n\nNo extreme statistical outliers were detected in the distribution spread."
+            
+        return explanation, json.loads(fig.to_json())
+        
+    elif intent == "ADV_COMPARE":
+        cat_cols = find_categorical_columns(df)
+        if not cat_cols or not numeric_cols:
+            return "Segment comparison requires both categorical and numeric dimensions in your data.", None
+            
+        cat_col = cat_cols[0]
+        val_col = numeric_cols[0]
+        
+        df_group = df.groupby(cat_col)[val_col].mean().reset_index().sort_values(val_col, ascending=False).head(10)
+        
+        fig = px.bar(df_group, x=cat_col, y=val_col, title=f"Comparison: Average {val_col.title()} by {cat_col.title()}", template="plotly_dark")
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        
+        if len(df_group) > 1:
+            top_cat = df_group.iloc[0][cat_col]
+            bottom_cat = df_group.iloc[-1][cat_col]
+            explanation = f"**Comparison Analysis**\n\nComparing segments by average {val_col.title()} reveals that **{top_cat}** is the strongest performer, separating heavily from **{bottom_cat}** which is the weakest among the top subset."
+        else:
+            explanation = "**Comparison Analysis**\n\nNot enough unique comparative segments exist in this category to establish bounds."
+            
+        return explanation, json.loads(fig.to_json())
+        
+    return None, None
+
 
