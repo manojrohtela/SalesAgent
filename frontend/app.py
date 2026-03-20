@@ -769,167 +769,149 @@ else:
     else:
         st.info("Run analysis to generate the strategic AI report.")
 
-    # Apply Custom CSS for Floating Chat Box
+    if "chat_open" not in st.session_state:
+        st.session_state.chat_open = False
+
+    # Apply Custom CSS for Modern Floating Action Button & Chat Panel
     st.markdown("""
     <style>
-    /* Base Chat Container */
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"] {
+    /* FAB Button */
+    div.element-container:has(#chat-fab-anchor) + div.stButton > button {
         position: fixed !important;
-        bottom: 35px !important;
-        right: 35px !important;
+        bottom: 25px !important;
+        right: 25px !important;
+        width: 64px !important;
+        height: 64px !important;
+        border-radius: 50% !important;
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+        color: white !important;
+        box-shadow: 0 8px 25px rgba(99,102,241, 0.45) !important;
         z-index: 999999 !important;
-        background-color: transparent !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
         border: none !important;
-        box-shadow: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+    }
+    div.element-container:has(#chat-fab-anchor) + div.stButton > button * {
+        font-size: 28px !important;
+        line-height: 1 !important;
+    }
+    div.element-container:has(#chat-fab-anchor) + div.stButton > button:hover {
+        transform: translateY(-4px) scale(1.05) !important;
+        box-shadow: 0 12px 35px rgba(99,102,241, 0.6) !important;
     }
     
-    /* COLLAPSED STATE (Floating Button) */
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:not(:has(details[open])) {
-        width: 65px !important;
-        height: 65px !important;
-        border-radius: 50% !important;
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
-        box-shadow: 0 10px 40px rgba(99,102,241, 0.45) !important;
-        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
-    }
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:not(:has(details[open])):hover {
-        transform: translateY(-4px) scale(1.02) !important;
-        box-shadow: 0 15px 50px rgba(99,102,241, 0.6) !important;
-    }
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:not(:has(details[open])) > details > summary {
-        height: 100% !important;
-        width: 100% !important;
+    /* Dedicated Close Button inside Panel */
+    div.element-container:has(#chat-close-anchor) + div.stButton > button {
+        background: transparent !important;
+        border: none !important;
+        color: rgba(255,255,255,0.6) !important;
         padding: 0 !important;
-        border-radius: 50% !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
+        font-size: 1.2rem !important;
     }
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:not(:has(details[open])) > details > summary p {
-        font-size: 0 !important; /* hide the text */
-    }
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:not(:has(details[open])) > details > summary svg {
-        display: none !important; /* hide default chevron */
-    }
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:not(:has(details[open])) > details > summary::before {
-        content: '💬' !important;
-        font-size: 28px !important;
+    div.element-container:has(#chat-close-anchor) + div.stButton > button:hover {
         color: white !important;
-        position: absolute !important;
     }
 
-    /* OPEN STATE (Chat Window) */
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:has(details[open]) {
-        width: 450px !important;
-        height: min(720px, 85vh) !important;
+    /* Floating Chat Panel Container */
+    div.element-container:has(#chat-panel-anchor) + div[data-testid="stVerticalBlock"] {
+        position: fixed !important;
+        bottom: 105px !important;
+        right: 25px !important;
+        width: 360px !important;
+        height: 520px !important;
         max-width: 90vw !important;
-        border-radius: 20px !important;
+        max-height: 80vh !important;
         background-color: #0f172a !important;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.6) !important;
-        border: 1px solid rgba(255,255,255,0.15) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        border-radius: 20px !important;
+        box-shadow: 0 20px 45px rgba(0,0,0,0.5) !important;
+        z-index: 999998 !important;
+        padding: 20px !important;
+        animation: chatFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
         display: flex !important;
         flex-direction: column !important;
+        overflow: hidden !important;
     }
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:has(details[open]) > details {
-        height: 100% !important;
-        display: flex !important;
-        flex-direction: column !important;
-        border: none !important;
-        margin: 0 !important;
-    }
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:has(details[open]) > details > summary {
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
-        color: white !important;
-        padding: 18px 24px !important;
-        border-radius: 20px 20px 0 0 !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
-        border: none !important;
-        margin-bottom: 0 !important;
-    }
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:has(details[open]) > details > summary p {
-        font-weight: 700 !important;
-        font-size: 1.15rem !important;
-        color: white !important;
-    }
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:has(details[open]) > details > summary svg {
-        display: none !important; /* hide default chevron */
-    }
-    /* Simple close 'X' */
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpander"]:has(details[open]) > details > summary::after {
-        content: '✖' !important;
-        color: rgba(255,255,255,0.8) !important;
-        font-size: 18px !important;
-        position: absolute !important;
-        right: 24px !important;
-    }
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpanderDetails"] {
-        padding: 16px !important;
-        background-color: #1e293b !important;
-        flex-grow: 1 !important;
-        overflow-y: auto !important;
-        border-radius: 0 0 20px 20px !important;
-    }
-    /* Additional fix for internal margins */
-    div.element-container:has(#chat-expander-anchor) + div.element-container div[data-testid="stExpanderDetails"] > div > div {
-        gap: 0 !important; /* Tighter chat elements */
+    
+    @keyframes chatFade {
+        from { opacity: 0; transform: translateY(20px) scale(0.96); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
     }
     </style>
     """, unsafe_allow_html=True)
 
-    # Floating Chat Window via Native Expander
-    st.markdown("<div id='chat-expander-anchor'></div>", unsafe_allow_html=True)
-    with st.expander("💬 Ask AI Analyst", expanded=False):
-        st.markdown("<div style='font-size: 1.3rem; font-weight: 800; margin-bottom: 5px; color: white;'>AI Analyst ✨</div>", unsafe_allow_html=True)
-        st.markdown("<div style='font-size: 0.85rem; color: #94a3b8; margin-bottom: 15px;'>Ask business queries or request custom charts.</div>", unsafe_allow_html=True)
-        
-        chat_container = st.container(height=480)
-        with chat_container:
-            if len(st.session_state.messages) == 0:
-                st.info("I'm ready! Some things you can ask me:\n\n- How to boost our weakest segments?\n- What's the general trend?\n- Create a pie chart for my categories.")
-                
-            for m in st.session_state.messages:
-                with st.chat_message(m["role"]):
-                    st.markdown(m["content"], unsafe_allow_html=True)
-                    
-            if st.session_state.is_typing:
-                with st.chat_message("assistant"):
-                    st.markdown("🤔 *Analyzing data...*")
-                    
-        # Text input handling inside Popover (st.chat_input may snap to bottom of screen natively, so we use form)
-        with st.form("chat_form", clear_on_submit=True, border=False):
-            col_input, col_btn = st.columns([4, 1], gap="small")
-            with col_input:
-                q = st.text_input("Ask a question...", label_visibility="collapsed", placeholder="Type your request here...")
-            with col_btn:
-                submit = st.form_submit_button("Send", use_container_width=True)
-                
-            if submit and q and q.strip():
-                st.session_state.messages.append({"role": "user", "content": q.strip()})
-                st.session_state.is_typing = True
-                st.rerun()
+    # Render Floating Action Button at Bottom Right
+    st.markdown("<div id='chat-fab-anchor'></div>", unsafe_allow_html=True)
+    if st.button("✖" if st.session_state.chat_open else "💬", key="fab_btn", help="Toggle AI Assistant"):
+        st.session_state.chat_open = not st.session_state.chat_open
+        st.rerun()
 
-        # Processing response in typing mode
-        if st.session_state.is_typing:
-            last_user = next((m["content"] for m in reversed(st.session_state.messages) if m["role"] == "user"), "")
-            uploaded_bytes = uploaded.getvalue() if uploaded is not None else None
-            try:
-                resp = call_backend_analyze(
-                    question=last_user,
-                    uploaded_file=uploaded_bytes,
-                    use_demo=uploaded is None,
-                )
-                st.session_state.analysis = resp
+    # Render Floating Chat Panel if Open
+    if st.session_state.chat_open:
+        st.markdown("<div id='chat-panel-anchor'></div>", unsafe_allow_html=True)
+        with st.container():
+            # Panel Header
+            col_t, col_x = st.columns([5, 1])
+            with col_t:
+                st.markdown("<div style='font-size: 1.15rem; font-weight: 800; color: white;'>AI Analyst ✨</div>", unsafe_allow_html=True)
+                st.markdown("<div style='font-size: 0.8rem; color: #94a3b8; margin-bottom: 12px;'>Ask business queries or request custom charts.</div>", unsafe_allow_html=True)
+            with col_x:
+                st.markdown("<div id='chat-close-anchor'></div>", unsafe_allow_html=True)
+                if st.button("✖", key="close_pnl_btn"):
+                    st.session_state.chat_open = False
+                    st.rerun()
+            
+            # Scrollable Chat Area
+            chat_container = st.container(height=350, border=False)
+            with chat_container:
+                if len(st.session_state.messages) == 0:
+                    st.info("I'm ready! Some things you can ask me:\n\n- How to boost weakest segments?\n- Recommend a marketing strategy.\n- Show me a dynamic pie chart.")
                 
-                # Check if chart got created dynamically, inform user in chat to check main screen
-                dynamic_chart_note = ""
-                if resp.get("charts", {}).get("dynamic_chart"):
-                    dynamic_chart_note = "\n\n*(I also generated a dynamic chart for you! Check the main dashboard.)*"
-                
-                report = (resp.get("structured_report") or "").strip()
-                display_text = report + dynamic_chart_note
-                st.session_state.messages.append({"role": "assistant", "content": display_text.replace("\n", "<br/>")})
-            except Exception as e:
-                st.session_state.messages.append({"role": "assistant", "content": f"Couldn't reach the backend: {str(e)}"})
-            finally:
-                st.session_state.is_typing = False
-                st.rerun()
+                for m in st.session_state.messages:
+                    with st.chat_message(m["role"]):
+                        st.markdown(m["content"], unsafe_allow_html=True)
+                        
+                if st.session_state.is_typing:
+                    with st.chat_message("assistant"):
+                        st.markdown("🤔 *Analyzing data...*")
+                        
+            # Chat Input Form
+            with st.form("chat_form", clear_on_submit=True, border=False):
+                col_input, col_btn = st.columns([4, 1], gap="small")
+                with col_input:
+                    q = st.text_input("Ask...", label_visibility="collapsed", placeholder="Type your request here...")
+                with col_btn:
+                    submit = st.form_submit_button("Send", use_container_width=True)
+                    
+                if submit and q and q.strip():
+                    st.session_state.messages.append({"role": "user", "content": q.strip()})
+                    st.session_state.is_typing = True
+                    st.rerun()
+
+            # Processing LLM response (when typing is flagged)
+            if st.session_state.is_typing:
+                last_user = next((m["content"] for m in reversed(st.session_state.messages) if m["role"] == "user"), "")
+                uploaded_bytes = uploaded.getvalue() if uploaded is not None else None
+                try:
+                    resp = call_backend_analyze(
+                        question=last_user,
+                        uploaded_file=uploaded_bytes,
+                        use_demo=uploaded is None,
+                    )
+                    st.session_state.analysis = resp
+                    
+                    dynamic_chart_note = ""
+                    if resp.get("charts", {}).get("dynamic_chart"):
+                        dynamic_chart_note = "\n\n*(I also generated an interactive dynamic chart for you! Check the main dashboard background.)*"
+                    
+                    report = (resp.get("structured_report") or "").strip()
+                    display_text = report + dynamic_chart_note
+                    st.session_state.messages.append({"role": "assistant", "content": display_text.replace("\n", "<br/>")})
+                except Exception as e:
+                    st.session_state.messages.append({"role": "assistant", "content": f"AI Engine Connection Error: {str(e)}"})
+                finally:
+                    st.session_state.is_typing = False
+                    st.rerun()
