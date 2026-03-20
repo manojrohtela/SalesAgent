@@ -772,47 +772,45 @@ else:
     if "chat_open" not in st.session_state:
         st.session_state.chat_open = False
 
-    # Apply Custom CSS for Modern Floating Action Button & Chat Panel
+    # Apply Custom CSS for Modern Floating Action Button & Chat Panel using RAW HTML
     st.markdown("""
     <style>
-    /* FAB Button */
-    div.element-container:has(#chat-fab-anchor) + div.stButton > button {
-        position: fixed !important;
-        bottom: 25px !important;
-        right: 25px !important;
-        width: 64px !important;
-        height: 64px !important;
-        border-radius: 50% !important;
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
-        color: white !important;
-        box-shadow: 0 8px 25px rgba(99,102,241, 0.45) !important;
-        z-index: 999999 !important;
-        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
-        border: none !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0 !important;
+    /* Raw HTML FAB Button */
+    .floating-chat-button {
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        width: 65px;
+        height: 65px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+        cursor: pointer;
+        box-shadow: 0px 8px 25px rgba(99,102,241, 0.45);
+        z-index: 999999;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        user-select: none;
     }
-    div.element-container:has(#chat-fab-anchor) + div.stButton > button * {
-        font-size: 28px !important;
-        line-height: 1 !important;
-    }
-    div.element-container:has(#chat-fab-anchor) + div.stButton > button:hover {
-        transform: translateY(-4px) scale(1.05) !important;
-        box-shadow: 0 12px 35px rgba(99,102,241, 0.6) !important;
+    .floating-chat-button:hover {
+        transform: translateY(-4px) scale(1.05);
+        box-shadow: 0px 12px 35px rgba(99,102,241, 0.6);
     }
     
     /* Dedicated Close Button inside Panel */
-    div.element-container:has(#chat-close-anchor) + div.stButton > button {
-        background: transparent !important;
-        border: none !important;
-        color: rgba(255,255,255,0.6) !important;
-        padding: 0 !important;
-        font-size: 1.2rem !important;
+    .close-chat-btn {
+        background: transparent;
+        border: none;
+        color: rgba(255,255,255,0.6);
+        font-size: 1.2rem;
+        cursor: pointer;
+        float: right;
     }
-    div.element-container:has(#chat-close-anchor) + div.stButton > button:hover {
-        color: white !important;
+    .close-chat-btn:hover {
+        color: white;
     }
 
     /* Floating Chat Panel Container */
@@ -820,8 +818,8 @@ else:
         position: fixed !important;
         bottom: 105px !important;
         right: 25px !important;
-        width: 360px !important;
-        height: 520px !important;
+        width: 370px !important;
+        height: 530px !important;
         max-width: 90vw !important;
         max-height: 80vh !important;
         background-color: #0f172a !important;
@@ -831,7 +829,7 @@ else:
         z-index: 999998 !important;
         padding: 20px !important;
         animation: chatFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-        display: flex !important;
+        display: none; /* Javascript will toggle this to 'flex' */
         flex-direction: column !important;
         overflow: hidden !important;
     }
@@ -841,28 +839,56 @@ else:
         to { opacity: 1; transform: translateY(0) scale(1); }
     }
     </style>
+    
+    <!-- PURE HTML FLOATING ACTION BUTTON -->
+    <div id="fab-btn" class="floating-chat-button" onclick="
+        const panel = window.parent.document.querySelector('div.element-container:has(#chat-panel-anchor) + div[data-testid=\\'stVerticalBlock\\']');
+        if(panel) {
+            const isHidden = (panel.style.display === 'none' || panel.style.display === '');
+            panel.style.display = isHidden ? 'flex' : 'none';
+            this.innerHTML = isHidden ? '✖' : '💬';
+            sessionStorage.setItem('st_chat_state', isHidden ? 'open' : 'closed');
+        }
+    ">💬</div>
+    
+    <!-- RESTORE STATE LISTENER FOR STREAMLIT RERUNS -->
+    <script>
+    setTimeout(() => {
+        const state = sessionStorage.getItem('st_chat_state');
+        const panel = window.parent.document.querySelector('div.element-container:has(#chat-panel-anchor) + div[data-testid=\\'stVerticalBlock\\']');
+        const btn = window.parent.document.getElementById('fab-btn');
+        if(state === 'open' && panel && btn) {
+            panel.style.display = 'flex';
+            btn.innerHTML = '✖';
+        }
+    }, 100);
+    </script>
     """, unsafe_allow_html=True)
 
-    # Render Floating Action Button at Bottom Right
-    st.markdown("<div id='chat-fab-anchor'></div>", unsafe_allow_html=True)
-    if st.button("✖" if st.session_state.chat_open else "💬", key="fab_btn", help="Toggle AI Assistant"):
-        st.session_state.chat_open = not st.session_state.chat_open
-        st.rerun()
+    # Force open state if assistant is processing a message
+    if st.session_state.is_typing:
+        st.markdown("<script>sessionStorage.setItem('st_chat_state', 'open');</script>", unsafe_allow_html=True)
 
-    # Render Floating Chat Panel if Open
-    if st.session_state.chat_open:
-        st.markdown("<div id='chat-panel-anchor'></div>", unsafe_allow_html=True)
-        with st.container():
-            # Panel Header
-            col_t, col_x = st.columns([5, 1])
-            with col_t:
-                st.markdown("<div style='font-size: 1.15rem; font-weight: 800; color: white;'>AI Analyst ✨</div>", unsafe_allow_html=True)
-                st.markdown("<div style='font-size: 0.8rem; color: #94a3b8; margin-bottom: 12px;'>Ask business queries or request custom charts.</div>", unsafe_allow_html=True)
-            with col_x:
-                st.markdown("<div id='chat-close-anchor'></div>", unsafe_allow_html=True)
-                if st.button("✖", key="close_pnl_btn"):
-                    st.session_state.chat_open = False
-                    st.rerun()
+    # ---------------------------------------------------------
+    # Render Floating Chat Panel Base (Always rendered, hidden via CSS initially)
+    # ---------------------------------------------------------
+    st.markdown("<div id='chat-panel-anchor'></div>", unsafe_allow_html=True)
+    with st.container():
+        # Panel Header
+        col_t, col_x = st.columns([5, 1])
+        with col_t:
+            st.markdown("<div style='font-size: 1.15rem; font-weight: 800; color: white;'>AI Analyst ✨</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size: 0.8rem; color: #94a3b8; margin-bottom: 12px;'>Ask business queries or request custom charts.</div>", unsafe_allow_html=True)
+        with col_x:
+            st.markdown("""
+                <button class="close-chat-btn" onclick="
+                    const panel = window.parent.document.querySelector('div.element-container:has(#chat-panel-anchor) + div[data-testid=\\'stVerticalBlock\\']');
+                    const btn = window.parent.document.getElementById('fab-btn');
+                    if(panel) panel.style.display = 'none';
+                    if(btn) btn.innerHTML = '💬';
+                    sessionStorage.setItem('st_chat_state', 'closed');
+                ">✖</button>
+            """, unsafe_allow_html=True)
             
             # Scrollable Chat Area
             chat_container = st.container(height=350, border=False)
