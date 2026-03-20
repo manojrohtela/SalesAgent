@@ -776,20 +776,20 @@ else:
     if st.session_state.is_typing:
         st.session_state.chat_open = True
 
-    # 1. Hidden Streamlit Proxy Toggle Button
-    st.markdown("<div id='hidden-btn-anchor'></div>", unsafe_allow_html=True)
+    # 1. Hidden Streamlit Proxy Toggle Button (User approach)
+    if st.button("toggle_chat", key="hidden_toggle"):
+        st.session_state.chat_open = not st.session_state.chat_open
+        st.rerun()
+
     st.markdown("""
         <style>
-        div.element-container:has(#hidden-btn-anchor) + div.stButton {
+        button[data-testid="baseButton-secondary"] {
             display: none !important;
         }
         </style>
     """, unsafe_allow_html=True)
-    if st.button("HiddenChatToggle", key="hidden_chat_toggle_btn"):
-        st.session_state.chat_open = not st.session_state.chat_open
-        st.rerun()
 
-    # 2. Pure HTML Floating Action Button (Fixes layout escaping issues)
+    # 2. Pure HTML Floating Action Button connects universally via querySelector
     btn_icon = "✖" if st.session_state.chat_open else "💬"
     st.markdown(f"""
     <style>
@@ -817,7 +817,10 @@ else:
     }}
     </style>
     <div class="floating-chat-button" onclick="
-        const btn = window.parent.document.querySelector('div.element-container:has(#hidden-btn-anchor) + div.stButton > button');
+        let btn = document.querySelector('[data-testid=\\'baseButton-secondary\\']');
+        if (!btn && window.parent && window.parent.document) {{
+            btn = window.parent.document.querySelector('[data-testid=\\'baseButton-secondary\\']');
+        }}
         if(btn) btn.click();
     ">{btn_icon}</div>
     """, unsafe_allow_html=True)
@@ -943,7 +946,10 @@ else:
             <div class="chat-header">
                 <span>AI Analyst ✨</span>
                 <button class="chat-close-btn" onclick="
-                    const btn = window.parent.document.querySelector('div.element-container:has(#hidden-btn-anchor) + div.stButton > button');
+                    let btn = document.querySelector('[data-testid=\\'baseButton-secondary\\']');
+                    if (!btn && window.parent && window.parent.document) {
+                        btn = window.parent.document.querySelector('[data-testid=\\'baseButton-secondary\\']');
+                    }
                     if(btn) btn.click();
                 ">✖</button>
             </div>
@@ -966,7 +972,7 @@ else:
             # Input Form Area (CSS aligned horizontally at flex bottom)
             with st.form("chat_form", clear_on_submit=True, border=False):
                 q = st.text_input("Ask...", label_visibility="collapsed", placeholder="Type your request here...")
-                submit = st.form_submit_button("➤")
+                submit = st.form_submit_button("➤", type="primary")
                 
                 if submit and q and q.strip():
                     st.session_state.messages.append({"role": "user", "content": q.strip()})
