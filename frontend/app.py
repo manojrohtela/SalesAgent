@@ -776,54 +776,44 @@ else:
     if st.session_state.is_typing:
         st.session_state.chat_open = True
 
-    # 1. Hidden Streamlit Proxy Toggle Button (User approach)
-    if st.button("toggle_chat", key="hidden_toggle"):
-        st.session_state.chat_open = not st.session_state.chat_open
-        st.rerun()
-
+    # Apply CSS specifically targeting the Streamlit Button via its key property
     st.markdown("""
-        <style>
-        button[data-testid="baseButton-secondary"] {
-            display: none !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # 2. Pure HTML Floating Action Button connects universally via querySelector
-    btn_icon = "✖" if st.session_state.chat_open else "💬"
-    st.markdown(f"""
     <style>
-    .floating-chat-button {{
+    div[data-testid="stButton"][key="chat_fab"],
+    .st-key-chat_fab {
         position: fixed !important;
         bottom: 20px !important;
         right: 20px !important;
+        z-index: 9999 !important;
+    }
+
+    div[data-testid="stButton"][key="chat_fab"] button,
+    .st-key-chat_fab button {
+        border-radius: 50% !important;
         width: 60px !important;
         height: 60px !important;
-        border-radius: 50% !important;
-        background-color: #6366f1 !important;
-        color: white !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
         font-size: 24px !important;
-        cursor: pointer !important;
+        background: #6366f1 !important;
+        color: white !important;
         box-shadow: 0px 4px 12px rgba(0,0,0,0.3) !important;
-        z-index: 9999 !important;
         transition: transform 0.2s ease !important;
-        user-select: none !important;
-    }}
-    .floating-chat-button:hover {{
+        border: none !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+    
+    div[data-testid="stButton"][key="chat_fab"] button:hover,
+    .st-key-chat_fab button:hover {
         transform: scale(1.1) !important;
-    }}
+    }
     </style>
-    <div class="floating-chat-button" onclick="
-        let btn = document.querySelector('[data-testid=\\'baseButton-secondary\\']');
-        if (!btn && window.parent && window.parent.document) {{
-            btn = window.parent.document.querySelector('[data-testid=\\'baseButton-secondary\\']');
-        }}
-        if(btn) btn.click();
-    ">{btn_icon}</div>
     """, unsafe_allow_html=True)
+
+    # CREATE SINGLE STREAMLIT BUTTON
+    if st.button("✖" if st.session_state.chat_open else "💬", key="chat_fab"):
+        st.session_state.chat_open = not st.session_state.chat_open
+        st.rerun()
 
     # 3. CONDITIONAL RENDERING OF CHAT PANEL
     if st.session_state.chat_open:
@@ -941,17 +931,10 @@ else:
         """, unsafe_allow_html=True)
         
         with st.container():
-            # Standard Header Layout mapping cleanly back to simulated JS toggle click
+            # Standard Header Layout matching cleanly native Python logic
             st.markdown("""
             <div class="chat-header">
                 <span>AI Analyst ✨</span>
-                <button class="chat-close-btn" onclick="
-                    let btn = document.querySelector('[data-testid=\\'baseButton-secondary\\']');
-                    if (!btn && window.parent && window.parent.document) {
-                        btn = window.parent.document.querySelector('[data-testid=\\'baseButton-secondary\\']');
-                    }
-                    if(btn) btn.click();
-                ">✖</button>
             </div>
             """, unsafe_allow_html=True)
 
