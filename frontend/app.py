@@ -816,22 +816,96 @@ else:
     /* Floating Chat Panel Container */
     div.element-container:has(#chat-panel-anchor) + div[data-testid="stVerticalBlock"] {
         position: fixed !important;
-        bottom: 105px !important;
+        bottom: 95px !important;
         right: 25px !important;
-        width: 370px !important;
-        height: 530px !important;
+        width: 340px !important;
+        height: 480px !important;
         max-width: 90vw !important;
         max-height: 80vh !important;
         background-color: #0f172a !important;
         border: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: 20px !important;
-        box-shadow: 0 20px 45px rgba(0,0,0,0.5) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.5) !important;
         z-index: 999998 !important;
-        padding: 20px !important;
+        padding: 0px !important;
         animation: chatFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
         display: none; /* Javascript will toggle this to 'flex' */
         flex-direction: column !important;
         overflow: hidden !important;
+    }
+    
+    /* Horizontal Input + Send Button Flexbox Fix */
+    div.element-container:has(#chat-panel-anchor) + div form {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 12px !important;
+        margin: 0 !important;
+        border: none !important;
+        border-top: 1px solid rgba(255,255,255,0.08) !important;
+        background-color: #0f172a !important;
+    }
+    /* Streamlit natively wraps elements in vertical blocks inside forms */
+    div.element-container:has(#chat-panel-anchor) + div form > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+    div.element-container:has(#chat-panel-anchor) + div form div[data-testid="stTextInput"] {
+        flex: 1 !important;
+        margin-bottom: 0 !important;
+    }
+    div.element-container:has(#chat-panel-anchor) + div form div[data-testid="stFormSubmitButton"] {
+        width: 45px !important;
+        min-width: 45px !important;
+        margin-bottom: 0 !important;
+    }
+    div.element-container:has(#chat-panel-anchor) + div form div[data-testid="stFormSubmitButton"] button {
+        height: 40px !important;
+        width: 45px !important;
+        padding: 0 !important;
+        border-radius: 8px !important;
+    }
+
+    /* Right Align User Chat Bubbles */
+    div.element-container:has(#chat-panel-anchor) + div [data-testid="stChatMessage"] {
+        background-color: transparent !important;
+        padding: 6px 16px !important;
+    }
+    div.element-container:has(#chat-panel-anchor) + div [data-testid="chatAvatarIcon-user"] {
+        display: none !important;
+    }
+    div.element-container:has(#chat-panel-anchor) + div div.stChatMessage[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
+        flex-direction: row-reverse !important; 
+    }
+    div.element-container:has(#chat-panel-anchor) + div div.stChatMessage[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) [data-testid="stMarkdownContainer"] {
+        background-color: #6366f1 !important;
+        color: white !important;
+        border-radius: 12px 12px 0 12px !important;
+        padding: 10px 14px !important;
+        display: inline-block !important;
+    }
+    div.element-container:has(#chat-panel-anchor) + div div.stChatMessage[data-testid="stChatMessage"]:not(:has([data-testid="chatAvatarIcon-user"])) [data-testid="stMarkdownContainer"] {
+        background-color: #1e293b !important;
+        color: rgba(255,255,255,0.9) !important;
+        border-radius: 12px 12px 12px 0 !important;
+        padding: 10px 14px !important;
+        display: inline-block !important;
+        border: 1px solid rgba(255,255,255,0.05) !important;
+    }
+
+    /* Custom Header Bar inside the container */
+    .chat-custom-header {
+        padding: 14px 18px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #0f172a;
+        font-weight: 800;
+        z-index: 10;
     }
     
     @keyframes chatFade {
@@ -874,48 +948,43 @@ else:
     # ---------------------------------------------------------
     st.markdown("<div id='chat-panel-anchor'></div>", unsafe_allow_html=True)
     with st.container():
-        # Panel Header
-        col_t, col_x = st.columns([5, 1])
-        with col_t:
-            st.markdown("<div style='font-size: 1.15rem; font-weight: 800; color: white;'>AI Analyst ✨</div>", unsafe_allow_html=True)
-            st.markdown("<div style='font-size: 0.8rem; color: #94a3b8; margin-bottom: 12px;'>Ask business queries or request custom charts.</div>", unsafe_allow_html=True)
-        with col_x:
-            st.markdown("""
-                <button class="close-chat-btn" onclick="
-                    const panel = window.parent.document.querySelector('div.element-container:has(#chat-panel-anchor) + div[data-testid=\\'stVerticalBlock\\']');
-                    const btn = window.parent.document.getElementById('fab-btn');
-                    if(panel) panel.style.display = 'none';
-                    if(btn) btn.innerHTML = '💬';
-                    sessionStorage.setItem('st_chat_state', 'closed');
-                ">✖</button>
-            """, unsafe_allow_html=True)
+        # Panel Header Top Bar
+        st.markdown("""
+        <div class="chat-custom-header">
+            <span style="font-size: 1.05rem; color: white;">AI Analyst <span style="font-size: 0.9em">✨</span></span>
+            <button class="close-chat-btn" onclick="
+                const panel = window.parent.document.querySelector('div.element-container:has(#chat-panel-anchor) + div[data-testid=\\'stVerticalBlock\\']');
+                const btn = window.parent.document.getElementById('fab-btn');
+                if(panel) panel.style.display = 'none';
+                if(btn) btn.innerHTML = '💬';
+                sessionStorage.setItem('st_chat_state', 'closed');
+            ">✖</button>
+        </div>
+        """, unsafe_allow_html=True)
             
-            # Scrollable Chat Area
-            chat_container = st.container(height=350, border=False)
-            with chat_container:
-                if len(st.session_state.messages) == 0:
-                    st.info("I'm ready! Some things you can ask me:\n\n- How to boost weakest segments?\n- Recommend a marketing strategy.\n- Show me a dynamic pie chart.")
-                
-                for m in st.session_state.messages:
-                    with st.chat_message(m["role"]):
-                        st.markdown(m["content"], unsafe_allow_html=True)
-                        
-                if st.session_state.is_typing:
-                    with st.chat_message("assistant"):
-                        st.markdown("🤔 *Analyzing data...*")
-                        
-            # Chat Input Form
-            with st.form("chat_form", clear_on_submit=True, border=False):
-                col_input, col_btn = st.columns([4, 1], gap="small")
-                with col_input:
-                    q = st.text_input("Ask...", label_visibility="collapsed", placeholder="Type your request here...")
-                with col_btn:
-                    submit = st.form_submit_button("Send", use_container_width=True)
+        # Scrollable Chat Area
+        chat_container = st.container(height=360, border=False)
+        with chat_container:
+            if len(st.session_state.messages) == 0:
+                st.info("I'm ready! Some things you can ask me:\n\n- How to boost weakest segments?\n- Recommend a marketing strategy.\n- Show me a dynamic pie chart.")
+            
+            for m in st.session_state.messages:
+                with st.chat_message(m["role"]):
+                    st.markdown(m["content"], unsafe_allow_html=True)
                     
-                if submit and q and q.strip():
-                    st.session_state.messages.append({"role": "user", "content": q.strip()})
-                    st.session_state.is_typing = True
-                    st.rerun()
+            if st.session_state.is_typing:
+                with st.chat_message("assistant"):
+                    st.markdown("🤔 *Analyzing data...*")
+                    
+        # Chat Input Form (Forced into Horizontal Flex via exact CSS targeting above)
+        with st.form("chat_form", clear_on_submit=True, border=False):
+            q = st.text_input("Ask...", label_visibility="collapsed", placeholder="Type your request here...")
+            submit = st.form_submit_button("➤")
+            
+            if submit and q and q.strip():
+                st.session_state.messages.append({"role": "user", "content": q.strip()})
+                st.session_state.is_typing = True
+                st.rerun()
 
             # Processing LLM response (when typing is flagged)
             if st.session_state.is_typing:
