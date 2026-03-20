@@ -710,7 +710,7 @@ else:
             fig = standard_figures[i] if i < len(standard_figures) else None
             if fig is not None:
                 title = fig.layout.title.text if fig.layout.title and fig.layout.title.text else "Performance Breakdown"
-                fig.update_layout(title=None)
+                fig.update_layout(title="")
                 st.markdown(f"<div class='panel'><div class='panel-title'>{title}</div></div>", unsafe_allow_html=True)
                 st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
             else:
@@ -728,7 +728,7 @@ else:
             fig = advanced_figures[i] if i < len(advanced_figures) else None
             if fig is not None:
                 title = fig.layout.title.text if fig.layout.title and fig.layout.title.text else "Analytical Insight"
-                fig.update_layout(title=None)
+                fig.update_layout(title="")
                 st.markdown(f"<div class='panel'><div class='panel-title'>{title}</div></div>", unsafe_allow_html=True)
                 st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
             else:
