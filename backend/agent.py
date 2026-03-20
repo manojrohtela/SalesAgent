@@ -45,8 +45,13 @@ def _read_uploaded_csv(uploaded_file: UploadFile) -> pd.DataFrame:
     """Read uploaded CSV with flexible column support, preserving original columns."""
     content = uploaded_file.file.read()
     from io import StringIO
+    
+    try:
+        decoded_content = content.decode("utf-8")
+    except UnicodeDecodeError:
+        decoded_content = content.decode("latin1")
 
-    s = StringIO(content.decode("utf-8"))
+    s = StringIO(decoded_content)
     df = pd.read_csv(s)
     
     # Strip whitespace from column names to avoid issues

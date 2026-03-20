@@ -215,7 +215,11 @@ st.markdown(
 def _load_df_from_upload_or_demo(uploaded: Optional[st.runtime.uploaded_file_manager.UploadedFile]) -> pd.DataFrame:
     """Load CSV with flexible column support - date column is optional."""
     if uploaded is not None:
-        df = pd.read_csv(io.StringIO(uploaded.getvalue().decode("utf-8")))
+        try:
+            content = uploaded.getvalue().decode("utf-8")
+        except UnicodeDecodeError:
+            content = uploaded.getvalue().decode("latin1")
+        df = pd.read_csv(io.StringIO(content))
     else:
         df = pd.read_csv(DEMO_CSV_PATH)
     
