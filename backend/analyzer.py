@@ -82,18 +82,48 @@ def analyze_dataset(df: pd.DataFrame, charts_dir: str) -> AnalysisResult:
         stats.update({"top_cat1": "N/A", "weakest_cat1": "N/A", "cat1_name": "Category"})
         stats.update({"strongest_cat2": "N/A", "weakest_cat2": "N/A", "cat2_label": "Segment"})
 
-    # Trends if dates exist
+    # Distribution Analysis & Outliers
+    mean_val = df[metric].mean()
+    std_val = df[metric].std()
+    outliers = df[metric][(df[metric] > mean_val + 2 * std_val) | (df[metric] < mean_val - 2 * std_val)]
+    insight_dist = f"{metric.title()} averages {mean_val:,.0f} with a standard deviation of {std_val:,.0f}."
+    if not outliers.empty:
+        insight_dist += f" Detected {len(outliers)} significant outliers indicating high variability."
+    key_insights.append(insight_dist)
+
+    # Correlation Analysis
+    if len(num_cols) > 1:
+        corr_matrix = df[num_cols].corr()
+        corr_unstacked = corr_matrix.abs().unstack()
+        corr_unstacked = corr_unstacked[corr_unstacked < 1.0] # Remove self-correlation
+        if not corr_unstacked.empty:
+            max_corr_idx = corr_unstacked.idxmax()
+            col_a, col_b = max_corr_idx
+            val = corr_matrix.loc[col_a, col_b]
+            
+            desc = "strong positive" if val > 0.6 else "moderate positive" if val > 0.3 else "weak"
+            if val < -0.3: desc = "moderate negative"
+            if val < -0.6: desc = "strong negative"
+            
+            key_insights.append(f"{col_a.replace('_', ' ').title()} has a {desc} correlation ({val:.2f}) with {col_b.replace('_', ' ').title()}.")
+
+    # Trends, Growth, & Forecasting if dates exist
     if date_cols:
         daily = df.groupby(date_cols[0])[metric].sum().reset_index().sort_values(date_cols[0])
         if len(daily) > 2:
             x = np.arange(len(daily))
-            slope = np.polyfit(x, daily[metric].values, 1)[0]
-            if slope > 0:
-                key_insights.append(f"{metric.title()} is trending upward over time.")
-            elif slope < 0:
-                key_insights.append(f"{metric.title()} is trending downward over time.")
-            else:
-                key_insights.append(f"{metric.title()} is relatively stable.")
+            y = daily[metric].values
+            
+            # Growth Rate
+            if y[0] != 0:
+                growth_rate = ((y[-1] - y[0]) / abs(y[0])) * 100
+                key_insights.append(f"Overall {metric.title()} grew by {growth_rate:.1f}% across the tracked period.")
+                
+            # Forecasting via Linear Regression
+            slope, intercept = np.polyfit(x, y, 1)
+            next_x = len(daily)
+            forecast = (slope * next_x) + intercept
+            key_insights.append(f"Next period's {metric.title()} is estimated at {forecast:,.0f} based on predictive linear trends.")
 
     # Generate Dummy/Standard charts for backend compatibility
     charts = {}

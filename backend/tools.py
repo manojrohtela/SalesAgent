@@ -353,6 +353,9 @@ DATASET SUMMARY
 KEY INSIGHTS
 <Bulleted list of the most important insights about products, regions, trends, and anomalies.>
 
+ADVANCED ANALYSIS
+<Bulleted list clearly explaining growth trends, correlation between variables, statistical forecasts, and variability insights in simple business terminology without heavy jargon.>
+
 VISUAL ANALYSIS
 <Bulleted list explaining what a revenue trend chart, product performance chart, and region comparison chart reveal.>
 
