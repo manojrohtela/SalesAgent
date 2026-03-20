@@ -97,6 +97,29 @@ st.markdown(
     font-size: 0.92rem;
   }
 
+  /* Entrance Animations */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .metric-card {
+    animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  div[data-testid="column"]:nth-child(1) .metric-card { animation-delay: 0.05s; }
+  div[data-testid="column"]:nth-child(2) .metric-card { animation-delay: 0.15s; }
+  div[data-testid="column"]:nth-child(3) .metric-card { animation-delay: 0.25s; }
+  div[data-testid="column"]:nth-child(4) .metric-card { animation-delay: 0.35s; }
+
+  /* Plotly Chart Entrance Animations */
+  div[data-testid="stPlotlyChart"] {
+    opacity: 0;
+    animation: fadeInUp 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  div[data-testid="column"]:nth-child(1) div[data-testid="stPlotlyChart"] { animation-delay: 0.3s; }
+  div[data-testid="column"]:nth-child(2) div[data-testid="stPlotlyChart"] { animation-delay: 0.5s; }
+  div[data-testid="column"]:nth-child(3) div[data-testid="stPlotlyChart"] { animation-delay: 0.7s; }
+
   /* Panels */
   .panel{
     background: var(--panel);
