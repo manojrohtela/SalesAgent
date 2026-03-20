@@ -397,7 +397,37 @@ def _charts(df: pd.DataFrame) -> Tuple:
             figs.append(fig_cat2)
     except Exception:
         pass  # Skip if second chart fails
-    
+
+    # Fallback 1: Distribution of secondary categorical
+    if len(figs) < 3 and len(categorical_cols) > 1:
+        try:
+            val_counts = df[categorical_cols[1]].value_counts().reset_index()
+            val_counts.columns = [categorical_cols[1], 'Count']
+            fig_f1 = px.bar(val_counts, x=categorical_cols[1], y='Count', title=f"{categorical_cols[1].title()} Distribution", color=categorical_cols[1], color_discrete_sequence=["#f59e0b", "#38bdf8", "#fb7185"])
+            fig_f1.update_layout(showlegend=False)
+            fig_f1 = _plotly_theme(fig_f1)
+            figs.append(fig_f1)
+        except Exception:
+            pass
+
+    # Fallback 2: Scatter correlation of numeric points
+    if len(figs) < 3 and len(numeric_cols) > 1:
+        try:
+            fig_f2 = px.scatter(df, x=numeric_cols[0], y=numeric_cols[1], title=f"{numeric_cols[0].title()} vs {numeric_cols[1].title()}", color=categorical_cols[0] if categorical_cols else None, color_discrete_sequence=["#a78bfa", "#6366f1", "#f59e0b"])
+            fig_f2 = _plotly_theme(fig_f2)
+            figs.append(fig_f2)
+        except Exception:
+            pass
+
+    # Fallback 3: Metric spread
+    if len(figs) < 3 and len(numeric_cols) > 0:
+        try:
+            fig_f3 = px.box(df, y=numeric_cols[0], title=f"{numeric_cols[0].title()} Overview Spread", color_discrete_sequence=["#22c55e"])
+            fig_f3 = _plotly_theme(fig_f3)
+            figs.append(fig_f3)
+        except Exception:
+            pass
+            
     # Return at least one figure or placeholder
     if len(figs) == 0:
         # Create a simple summary if no charts possible
@@ -671,24 +701,21 @@ else:
 
     # Expand visualizations to full width using 3 equally spaced columns
     col1, col2, col3 = st.columns(3, gap="large")
-    with col1:
-        st.markdown("<div class='panel'><div class='panel-title'>Trend Analysis</div></div>", unsafe_allow_html=True)
-        if fig_trend is not None:
-            st.plotly_chart(fig_trend, use_container_width=True, config={"displayModeBar": False})
-        else:
-            st.info("No data available for this chart")
-    with col2:
-        st.markdown("<div class='panel'><div class='panel-title'>Performance Breakdown</div></div>", unsafe_allow_html=True)
-        if fig_product is not None:
-            st.plotly_chart(fig_product, use_container_width=True, config={"displayModeBar": False})
-        else:
-            st.info("No data available for this chart")
-    with col3:
-        st.markdown(f"<div class='panel'><div class='panel-title'>{kpis.get('cat2_label', 'Segment')} Comparison</div></div>", unsafe_allow_html=True)
-        if fig_region is not None:
-            st.plotly_chart(fig_region, use_container_width=True, config={"displayModeBar": False})
-        else:
-            st.info("No data available for this chart")
+    
+    standard_figures = [fig_trend, fig_product, fig_region]
+    standard_cols = [col1, col2, col3]
+    
+    for i, col in enumerate(standard_cols):
+        with col:
+            fig = standard_figures[i] if i < len(standard_figures) else None
+            if fig is not None:
+                title = fig.layout.title.text if fig.layout.title and fig.layout.title.text else "Performance Breakdown"
+                fig.update_layout(title=None)
+                st.markdown(f"<div class='panel'><div class='panel-title'>{title}</div></div>", unsafe_allow_html=True)
+                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+            else:
+                st.markdown("<div class='panel'><div class='panel-title'>Performance Breakdown</div></div>", unsafe_allow_html=True)
+                st.info("Insufficient column dimensions for this chart")
 
     st.markdown("<br><div style='font-size:1.4rem; font-weight:800; letter-spacing:-0.02em; margin-bottom: 2px;'>Advanced Predictive Analytics</div>", unsafe_allow_html=True)
     col4, col5, col6 = st.columns(3, gap="large")
