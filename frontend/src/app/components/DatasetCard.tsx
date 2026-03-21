@@ -17,7 +17,7 @@ export function DatasetCard({
   description,
   rows,
   columns,
-  icon,
+  icon: Icon,
   onSelect,
   delay = 0,
 }: DatasetCardProps) {
@@ -32,7 +32,7 @@ export function DatasetCard({
     >
       <div className="flex items-center mb-4">
         <div className="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center group-hover:bg-indigo-500/20 transition-all duration-300">
-          {icon && <icon className="w-6 h-6 text-indigo-400" />}
+          {Icon ? <Icon className="w-6 h-6 text-indigo-400" /> : null}
         </div>
       </div>
 

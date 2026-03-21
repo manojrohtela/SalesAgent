@@ -7,7 +7,6 @@ import { BackgroundGradient } from "./ui/BackgroundGradient";
 import { DatasetCard } from "./DatasetCard";
 import { UploadSection } from "./UploadSection";
 import { Container } from "./ui/Container";
-import { Grid } from "./ui/Grid";
 import { Section } from "./ui/Section";
 import { useData } from "../DataContext";
 import { analyzeDataset } from "../api";
@@ -127,7 +126,7 @@ export function Landing() {
           animate
           delay={0.4}
         >
-          <Grid cols={{ default: 1, md: 2, lg: 3 }} gap={6}>
+          <div className="grid gap-6 md:grid-cols-3">
             {dummyDatasets.map((dataset, index) => (
               <DatasetCard
                 key={dataset.id}
@@ -140,7 +139,7 @@ export function Landing() {
                 delay={0.5 + index * 0.1}
               />
             ))}
-          </Grid>
+          </div>
         </Section>
       </Container>
     </div>
