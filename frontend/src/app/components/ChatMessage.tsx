@@ -1,12 +1,15 @@
 import { motion } from "motion/react";
 import { Bot, User } from "lucide-react";
+import { AnswerAudit } from "../api";
+import { AuditTrail } from "./AuditTrail";
 
 interface ChatMessageProps {
   type: "user" | "ai";
   content: string;
+  audit?: AnswerAudit;
 }
 
-export function ChatMessage({ type, content }: ChatMessageProps) {
+export function ChatMessage({ type, content, audit }: ChatMessageProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -40,6 +43,7 @@ export function ChatMessage({ type, content }: ChatMessageProps) {
           }`}
         >
           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{content}</p>
+          {type === "ai" ? <AuditTrail audit={audit} /> : null}
         </div>
       </div>
     </motion.div>

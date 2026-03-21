@@ -84,6 +84,32 @@ class AnalyzeFormParsingTests(unittest.TestCase):
             "show me the top region",
         )
 
+    def test_compare_endpoint_accepts_current_and_comparison_files(self) -> None:
+        response = self.client.post(
+            "/compare",
+            files={
+                "primary_file": (
+                    "baseline.csv",
+                    b"date,revenue,region\n2026-01-01,100,North\n2026-01-02,150,South\n",
+                    "text/csv",
+                ),
+                "comparison_file": (
+                    "candidate.csv",
+                    b"date,revenue,region\n2026-01-01,120,North\n2026-01-02,190,South\n",
+                    "text/csv",
+                ),
+            },
+            data={"primary_use_demo": "false"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["baseline_label"], "baseline.csv")
+        self.assertEqual(payload["comparison_label"], "candidate.csv")
+        self.assertEqual(payload["primary_metric"], "revenue")
+        self.assertIn("comparison_summary", payload)
+        self.assertGreaterEqual(len(payload["cards"]), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TrendingUp, ShoppingCart, Users } from "lucide-react";
 import { motion } from "motion/react";
 import { LoadingScreen } from "./LoadingScreen";
@@ -9,7 +9,7 @@ import { UploadSection } from "./UploadSection";
 import { Container } from "./ui/Container";
 import { Section } from "./ui/Section";
 import { useData } from "../DataContext";
-import { analyzeDataset } from "../api";
+import { analyzeDataset, warmBackend } from "../api";
 
 const dummyDatasets = [
   {
@@ -50,6 +50,10 @@ export function Landing() {
     setSelectedFile, setUseDemo, setDemoDatasetName
   } = useData();
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void warmBackend();
+  }, []);
 
   const performAnalysis = async (useDemo: boolean, demoName?: string, file?: File) => {
     setIsLoading(true);

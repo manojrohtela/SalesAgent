@@ -4,12 +4,13 @@ import { ChatMessage } from "./ChatMessage";
 import { TypingIndicator } from "./TypingIndicator";
 import { ChatPanelHeader } from "./ChatPanelHeader";
 import { useData } from "../DataContext";
-import { analyzeDataset } from "../api";
+import { analyzeDataset, AnswerAudit } from "../api";
 
 interface Message {
   id: number;
   type: "user" | "ai";
   content: string;
+  audit?: AnswerAudit;
 }
 
 interface ChatPanelProps {
@@ -102,6 +103,7 @@ export function ChatPanel({ initialMessages = [], className = "", onClose }: Cha
         id: messages.length + 2,
         type: "ai",
         content: `${aiResponse.structured_report}${chartHint}`,
+        audit: aiResponse.answer_audit,
       };
       setMessages((prev) => [...prev, aiMessage]);
     } catch (err) {
@@ -110,6 +112,11 @@ export function ChatPanel({ initialMessages = [], className = "", onClose }: Cha
         id: messages.length + 2,
         type: "ai",
         content: "I encountered an error while trying to process your request. Please try again.",
+        audit: {
+          question: questionText,
+          question_type: "ERROR",
+          evidence: ["The request failed before a verified answer could be produced."],
+        },
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -131,6 +138,7 @@ export function ChatPanel({ initialMessages = [], className = "", onClose }: Cha
             key={message.id}
             type={message.type}
             content={message.content}
+            audit={message.audit}
           />
         ))}
 

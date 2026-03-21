@@ -74,8 +74,12 @@ def detect_column_types(df: pd.DataFrame) -> Dict[str, str]:
         elif pd.api.types.is_object_dtype(dtype) or pd.api.types.is_categorical_dtype(dtype):
             # Check if it looks numeric
             try:
-                pd.to_numeric(df[col].dropna(), errors='coerce').notna().sum() / len(df[col].dropna()) > 0.8
-                column_types[col] = "numeric"
+                non_null = df[col].dropna()
+                if len(non_null) == 0:
+                    column_types[col] = "categorical"
+                else:
+                    numeric_ratio = pd.to_numeric(non_null, errors='coerce').notna().sum() / len(non_null)
+                    column_types[col] = "numeric" if numeric_ratio > 0.8 else "categorical"
             except:
                 column_types[col] = "categorical"
         else:
@@ -144,7 +148,9 @@ def generate_dynamic_chart(df: pd.DataFrame, question: str, chart_type: Optional
         
         return {
             "type": "dynamic",
-            "data": fig.to_json()
+            "data": fig.to_json(),
+            "generated_code": code,
+            "question": question,
         }
     except Exception as e:
         logger.error(f"Error executing chart code: {e}")
@@ -302,11 +308,75 @@ def _format_query_result(result: Any, question: str) -> str:
         return str(result)
 
 
-def _answer_data_question(df: pd.DataFrame, question: str, stats: Dict[str, Any]) -> Optional[str]:
+def _extract_columns_from_code(code: str) -> List[str]:
+    columns = re.findall(r"""df\[\s*["']([^"']+)["']\s*\]""", code or "")
+    columns.extend(re.findall(r"""groupby\(\s*["']([^"']+)["']\s*\)""", code or ""))
+    columns.extend(re.findall(r"""\[\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']\s*\]""", code or ""))
+
+    flattened: List[str] = []
+    for item in columns:
+        if isinstance(item, tuple):
+            flattened.extend([value for value in item if value])
+        elif item:
+            flattened.append(item)
+
+    seen: List[str] = []
+    for column in flattened:
+        if column not in seen:
+            seen.append(column)
+    return seen
+
+
+def _summarize_result_for_audit(result: Any) -> str:
+    if isinstance(result, pd.Series):
+        preview = [f"{index}: {value}" for index, value in result.head(5).items()]
+        return ", ".join(preview)
+    if isinstance(result, pd.DataFrame):
+        if result.empty:
+            return "No rows returned"
+        return result.head(3).to_dict(orient="records").__repr__()
+    if isinstance(result, (list, tuple)):
+        return ", ".join(str(item) for item in result[:5])
+    return str(result)
+
+
+def _build_base_audit(
+    df: Optional[pd.DataFrame],
+    stats: Dict[str, Any],
+    question: str,
+    question_type: str,
+) -> Dict[str, Any]:
+    return {
+        "question": question,
+        "question_type": question_type,
+        "dataset_scope": {
+            "rows": int(len(df)) if df is not None else int(stats.get("row_count", 0) or 0),
+            "columns": list(df.columns)[:12] if df is not None else [],
+        },
+        "metric": stats.get("metric_name", ""),
+        "dimensions": [
+            value
+            for value in [stats.get("cat1_name"), stats.get("cat2_label")]
+            if isinstance(value, str) and value
+        ],
+        "columns_used": [],
+        "generated_query": "",
+        "result_preview": "",
+        "evidence": [],
+    }
+
+
+def _answer_data_question(
+    df: pd.DataFrame,
+    question: str,
+    stats: Dict[str, Any],
+) -> Tuple[Optional[str], Dict[str, Any]]:
     """
     Answer a data question by generating and executing a pandas query dynamically.
     Uses LLM to generate the pandas code instead of hardcoded rules.
     """
+    audit = _build_base_audit(df, stats, question, "DATA")
+
     # Ensure date column is datetime if it exists
     if 'date' in df.columns:
         df = df.copy()
@@ -319,20 +389,31 @@ def _answer_data_question(df: pd.DataFrame, question: str, stats: Dict[str, Any]
     
     if not pandas_code:
         logger.warning(f"Failed to generate pandas query for: {question}")
-        return None
+        audit["evidence"].append("No executable pandas query could be generated from the question.")
+        return None, audit
     
     # Execute the query
     success, result, error_msg = execute_pandas_query(df, pandas_code)
+    audit["generated_query"] = pandas_code
+    audit["columns_used"] = _extract_columns_from_code(pandas_code)
     
     if not success:
         logger.error(f"Query execution failed: {error_msg}")
-        return None
+        audit["evidence"].append(error_msg)
+        return None, audit
     
     # Format the result into a readable response
     response = _format_query_result(result, question)
+    audit["result_preview"] = _summarize_result_for_audit(result)
+    audit["evidence"] = [
+        f"Query executed against {len(df):,} rows.",
+        f"Primary metric in scope: {stats.get('metric_name', 'detected dynamically')}.",
+    ]
+    if audit["columns_used"]:
+        audit["evidence"].append(f"Columns used: {', '.join(audit['columns_used'])}.")
     logger.info(f"Final response: {response}")
     
-    return response
+    return response, audit
 
 
 def build_insight_chain():
@@ -585,10 +666,10 @@ def generate_structured_ai_response(
     dataset_summary: str = "",
     stats_snapshot: Dict[str, Any] = None,
     user_question: Optional[str] = "",
-) -> Tuple[str, Optional[Dict[str, Any]]]:
+) -> Tuple[str, Optional[Dict[str, Any]], Dict[str, Any]]:
     """
     Intelligent business analyst that handles data queries, business analysis, general business questions, and chart generation.
-    Returns (text_response, chart_object_or_none)
+    Returns (text_response, chart_object_or_none, answer_audit)
     
     Features:
     - Chart generation for "show this in chart" requests
@@ -604,6 +685,7 @@ def generate_structured_ai_response(
     
     # Classify the question
     question_type = _classify_question(question, df) if question else "NONE"
+    answer_audit = _build_base_audit(df, stats_snapshot, question, question_type if question else "FULL_REPORT")
     
     # Get key insights for context
     key_insights = _get_key_insights(df, stats_snapshot)
@@ -613,7 +695,14 @@ def generate_structured_ai_response(
         try:
             adv_response, adv_chart = run_advanced_analytics(df, question_type, question)
             if adv_response:
-                return adv_response, adv_chart
+                answer_audit["evidence"] = [
+                    "Advanced analytics mode was selected for this request.",
+                    f"Detected metric: {stats_snapshot.get('metric_name', 'dynamic metric')}.",
+                ]
+                if adv_chart and isinstance(adv_chart, dict):
+                    answer_audit["columns_used"] = list(df.columns[:6]) if df is not None else []
+                    answer_audit["result_preview"] = "Advanced analytic chart returned."
+                return adv_response, adv_chart, answer_audit
         except Exception as e:
             logger.warning(f"Advanced analytics failed (falling back): {e}")
 
@@ -624,38 +713,54 @@ def generate_structured_ai_response(
                 chart_obj = generate_dynamic_chart(df, question)
                 if chart_obj:
                     response_text = f"I've created a chart for your query: {question}"
+                    answer_audit["question_type"] = "CHART"
+                    answer_audit["generated_query"] = chart_obj.get("generated_code", "")
+                    answer_audit["columns_used"] = _extract_columns_from_code(answer_audit["generated_query"])
+                    answer_audit["result_preview"] = "Dynamic chart created from the dataset."
+                    answer_audit["evidence"] = [
+                        f"Chart generated over {len(df):,} dataset rows.",
+                        f"Primary metric in scope: {stats_snapshot.get('metric_name', 'dynamic metric')}.",
+                    ]
                     logger.info(f"Chart generated for question: {question}")
-                    return response_text, chart_obj
+                    return response_text, chart_obj, answer_audit
         except Exception as e:
             logger.warning(f"Chart generation failed (will fallback): {e}")
         
         # Fallback if chart generation fails - return data analysis instead
         if df is not None:
             try:
-                data_answer = _answer_data_question(df, question, stats_snapshot)
+                data_answer, data_audit = _answer_data_question(df, question, stats_snapshot)
                 if data_answer:
-                    return f"Chart generation encountered an issue. Here's the data instead:\n{data_answer}", None
+                    data_audit["question_type"] = "CHART_FALLBACK"
+                    return f"Chart generation encountered an issue. Here's the data instead:\n{data_answer}", None, data_audit
             except:
                 pass
         
-        return "I couldn't generate a chart for that request. Try asking for a pie chart, bar chart, or line chart with specific data.", None
+        answer_audit["evidence"] = ["Chart generation failed before a valid figure could be produced."]
+        return "I couldn't generate a chart for that request. Try asking for a pie chart, bar chart, or line chart with specific data.", None, answer_audit
     
     # No question - return full report
     if not question:
         try:
             report = _generate_full_report(dataset_summary, stats_snapshot)
-            return report, None
+            answer_audit["evidence"] = [
+                "Full report generated from the dataset summary and stats snapshot.",
+                f"Rows analyzed: {answer_audit['dataset_scope']['rows']:,}.",
+            ]
+            answer_audit["columns_used"] = answer_audit["dataset_scope"]["columns"]
+            return report, None, answer_audit
         except Exception as e:
             logger.warning(f"Full report generation failed: {e}")
-            return "Unable to generate full report. Please ask specific questions about the data.", None
+            answer_audit["evidence"] = [f"Full report generation failed: {e}"]
+            return "Unable to generate full report. Please ask specific questions about the data.", None, answer_audit
     
     if question_type == "DATA":
         # Direct data queries
         if df is not None:
             try:
-                data_answer = _answer_data_question(df, question, stats_snapshot)
+                data_answer, data_audit = _answer_data_question(df, question, stats_snapshot)
                 if data_answer:
-                    return data_answer, None
+                    return data_answer, None, data_audit
             except Exception as e:
                 logger.warning(f"Data question failed: {e}")
         
@@ -668,11 +773,16 @@ def generate_structured_ai_response(
             })
             content = getattr(msg, "content", None)
             if isinstance(content, str):
-                return f"[Data analysis fallback] {content.strip()}", None
+                answer_audit["evidence"] = [
+                    "Direct data query fallback used business reasoning over existing insights.",
+                    "The requested query could not be executed deterministically.",
+                ]
+                return f"[Data analysis fallback] {content.strip()}", None, answer_audit
         except Exception as e:
             logger.warning(f"Data fallback also failed: {e}")
         
-        return f"I couldn't directly query the data. Based on available insights:\n{key_insights}", None
+        answer_audit["evidence"] = ["No reliable direct data answer was produced, so the response fell back to dataset insights."]
+        return f"I couldn't directly query the data. Based on available insights:\n{key_insights}", None, answer_audit
     
 
     elif question_type == "BUSINESS_ANALYSIS":
@@ -685,13 +795,18 @@ def generate_structured_ai_response(
             })
             content = getattr(msg, "content", None)
             if isinstance(content, str):
-                return content.strip(), None
+                answer_audit["evidence"] = [
+                    "Business analysis chain used dataset insights as context.",
+                    f"Primary metric: {stats_snapshot.get('metric_name', 'dynamic metric')}.",
+                ]
+                return content.strip(), None, answer_audit
         except Exception as e:
             logger.warning(f"Business analysis LLM failed: {e}")
         
         # Fallback: return summary insights with question context
         fallback_response = f"Based on the data analysis:\n\n{key_insights}\n\nFor more specific recommendations on '{question}', please rephrase your question more clearly."
-        return fallback_response, None
+        answer_audit["evidence"] = ["Business analysis model failed, so the response fell back to deterministic insight summaries."]
+        return fallback_response, None, answer_audit
     
     else:  # GENERAL
         # General business questions - with comprehensive error handling
@@ -703,7 +818,8 @@ def generate_structured_ai_response(
             })
             content = getattr(msg, "content", None)
             if isinstance(content, str):
-                return content.strip(), None
+                answer_audit["evidence"] = ["General business reasoning used the detected dataset insights as supporting context."]
+                return content.strip(), None, answer_audit
         except Exception as e:
             logger.warning(f"General business LLM failed: {e}")
         
@@ -717,12 +833,14 @@ def generate_structured_ai_response(
             })
             content = getattr(msg, "content", None)
             if isinstance(content, str):
-                return content.strip(), None
+                answer_audit["evidence"] = ["General response fell back to the business analysis chain."]
+                return content.strip(), None, answer_audit
         except:
             pass
         
         # Final fallback: use insights
-        return f"General query: {question}\n\nAvailable insights:\n{key_insights}", None
+        answer_audit["evidence"] = ["All model-based fallbacks failed, so the answer returned the available dataset insights directly."]
+        return f"General query: {question}\n\nAvailable insights:\n{key_insights}", None, answer_audit
 
 
 def generate_structured_ai_response_legacy(
@@ -735,7 +853,7 @@ def generate_structured_ai_response_legacy(
     Legacy wrapper for backward compatibility.
     Returns only the text response (ignores chart data).
     """
-    text_response, _ = generate_structured_ai_response(
+    text_response, _, _ = generate_structured_ai_response(
         df=df,
         dataset_summary=dataset_summary,
         stats_snapshot=stats_snapshot,
@@ -958,5 +1076,3 @@ def run_advanced_analytics(df: pd.DataFrame, intent: str, question: str) -> Tupl
         return explanation, json.loads(fig.to_json())
         
     return None, None
-
-

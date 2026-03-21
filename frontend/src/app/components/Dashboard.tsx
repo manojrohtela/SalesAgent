@@ -16,11 +16,14 @@ import {
 import { motion } from "motion/react";
 import { useNavigate } from "react-router";
 import { AIChartPlaceholderCard } from "./AIChartPlaceholderCard";
+import { AlertsCard } from "./AlertsCard";
 import { ChatPanel } from "./ChatPanel";
 import { ChartCard } from "./ChartCard";
 import { DynamicChartCard } from "./DynamicChartCard";
+import { ForecastCard } from "./ForecastCard";
 import { InsightListCard } from "./InsightListCard";
 import { SummaryMetricCard } from "./SummaryMetricCard";
+import { WhatIfSimulatorCard } from "./WhatIfSimulatorCard";
 import { BackgroundGradient } from "./ui/BackgroundGradient";
 import { AppCard } from "./ui/AppCard";
 import { PageHeader } from "./PageHeader";
@@ -267,7 +270,7 @@ export function Dashboard() {
     {
       id: 1,
       type: "ai" as const,
-      content: `Your dataset is ready. Ask for charts, comparisons, forecasts, or recommendations.${
+      content: `Your dataset is ready. Ask for charts, comparisons, forecasts, simulations, or recommendations.${
         analysisData.follow_up_questions.length > 0
           ? `\n\nTry: ${analysisData.follow_up_questions.slice(0, 2).join(" | ")}`
           : ""
@@ -342,7 +345,7 @@ export function Dashboard() {
               <div className="max-w-3xl">
                 <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/80">Dataset Command Center</p>
                 <h2 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">
-                  Dynamic metrics, full analysis, six core charts, and AI chart history
+                  Dynamic metrics, planning tools, six core charts, and AI chart history
                 </h2>
                 <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-300 sm:text-base">
                   {analysisData.dataset_summary}
@@ -396,6 +399,15 @@ export function Dashboard() {
               delay={0.05 * index}
             />
           ))}
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
+          <ForecastCard forecast={analysisData.forecast} />
+          <AlertsCard alerts={analysisData.alerts} />
+        </div>
+
+        <div className="grid gap-6">
+          <WhatIfSimulatorCard whatIf={analysisData.what_if} />
         </div>
 
         <section className="space-y-5">
