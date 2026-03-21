@@ -9,43 +9,84 @@ import { UploadSection } from "./UploadSection";
 import { Container } from "./ui/Container";
 import { Grid } from "./ui/Grid";
 import { Section } from "./ui/Section";
+import { useData } from "../DataContext";
+import { analyzeDataset } from "../api";
 
 const dummyDatasets = [
   {
     id: 1,
-    name: "E-commerce Sales",
-    description: "Product sales, revenue, and customer data",
-    rows: 10000,
+    name: "Walmart Sales",
+    description: "Retail sales dataset for Walmart stores",
+    rows: 6435,
     columns: 8,
     icon: ShoppingCart,
+    file: "Walmart_Sales.csv"
   },
   {
     id: 2,
-    name: "Customer Analytics",
-    description: "User behavior, demographics, and engagement",
-    rows: 25000,
-    columns: 12,
+    name: "Sales Data Sample",
+    description: "General sales data with multiple dimensions",
+    rows: 2823,
+    columns: 25,
     icon: Users,
+    file: "sales_data_sample.csv"
   },
   {
     id: 3,
-    name: "Revenue Growth",
-    description: "Monthly revenue, expenses, and profit margins",
-    rows: 5000,
+    name: "Demo Analytics",
+    description: "Synthetic dataset for testing AI Business metrics",
+    rows: 500,
     columns: 6,
     icon: TrendingUp,
+    file: "demo_dataset.csv"
   },
 ];
 
 export function Landing() {
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { 
+    isLoading, setIsLoading, 
+    setAnalysisData, 
+    setAiChartHistory, setPendingAiChartPrompt,
+    setSelectedFile, setUseDemo, setDemoDatasetName
+  } = useData();
+  const [error, setError] = useState<string | null>(null);
 
-  const handleDatasetSelect = () => {
+  const performAnalysis = async (useDemo: boolean, demoName?: string, file?: File) => {
     setIsLoading(true);
-    setTimeout(() => {
+    setError(null);
+    setAiChartHistory([]);
+    setPendingAiChartPrompt(null);
+    try {
+      const result = await analyzeDataset(useDemo, "", file, demoName);
+      setAnalysisData(result);
+      if (file) {
+        setSelectedFile(file);
+        setUseDemo(false);
+        setDemoDatasetName(null);
+      } else {
+        setSelectedFile(null);
+        setUseDemo(true);
+        setDemoDatasetName(demoName || null);
+      }
       navigate("/dashboard");
-    }, 3000);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to analyze dataset");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDatasetSelect = (id: number) => {
+    const d = dummyDatasets.find(x => x.id === id);
+    if (d) {
+      performAnalysis(true, d.file);
+    }
+  };
+
+  const handleFileSelect = (file: File) => {
+    performAnalysis(false, undefined, file);
   };
 
   if (isLoading) {
@@ -69,9 +110,15 @@ export function Landing() {
           </div>
         </Section>
 
+        {error && (
+            <div className="text-red-400 text-center mb-4 bg-red-400/10 py-2 rounded">
+              {error}
+            </div>
+        )}
+
         {/* Upload Section */}
         <Section className="mb-12 sm:mb-16">
-          <UploadSection />
+          <UploadSection onFileSelect={handleFileSelect} />
         </Section>
 
         {/* Dummy Data Section */}
@@ -89,7 +136,7 @@ export function Landing() {
                 rows={dataset.rows}
                 columns={dataset.columns}
                 icon={dataset.icon}
-                onSelect={handleDatasetSelect}
+                onSelect={() => handleDatasetSelect(dataset.id)}
                 delay={0.5 + index * 0.1}
               />
             ))}

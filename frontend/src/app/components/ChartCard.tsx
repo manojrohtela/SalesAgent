@@ -20,10 +20,11 @@ import { AppCard } from "./ui/AppCard";
 interface ChartCardProps {
   title: string;
   type: "line" | "bar" | "pie" | "area";
+  data?: any[];
 }
 
 // Sample data
-const lineData = [
+const fallbackLineData = [
   { name: "Jan", value: 4000 },
   { name: "Feb", value: 3000 },
   { name: "Mar", value: 5000 },
@@ -32,7 +33,7 @@ const lineData = [
   { name: "Jun", value: 5500 },
 ];
 
-const barData = [
+const fallbackBarData = [
   { name: "Electronics", value: 4000 },
   { name: "Clothing", value: 3000 },
   { name: "Food", value: 2000 },
@@ -40,32 +41,40 @@ const barData = [
   { name: "Toys", value: 1890 },
 ];
 
-const pieData = [
+const fallbackPieData = [
   { name: "18-25", value: 400 },
   { name: "26-35", value: 300 },
   { name: "36-45", value: 300 },
   { name: "46+", value: 200 },
 ];
 
-const areaData = [
+const fallbackAreaData = [
   { name: "Week 1", value: 2400 },
   { name: "Week 2", value: 1398 },
   { name: "Week 3", value: 9800 },
   { name: "Week 4", value: 3908 },
 ];
 
-const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b"];
+const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#3b82f6"];
 
-export function ChartCard({ title, type }: ChartCardProps) {
+export function ChartCard({ title, type, data }: ChartCardProps) {
+
+  // Custom Formatter to abbreviate long names if needed, or format numbers
+  const yAxisFormatter = (value: number) => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+    return value.toString();
+  };
+
   const renderChart = () => {
     switch (type) {
       case "line":
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={lineData}>
+            <LineChart data={data || fallbackLineData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} />
-              <YAxis stroke="#9ca3af" fontSize={12} />
+              <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} tickFormatter={(str) => str.length > 10 ? str.substring(0, 10) + '...' : str} />
+              <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={yAxisFormatter} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#1e293b",
@@ -89,10 +98,10 @@ export function ChartCard({ title, type }: ChartCardProps) {
       case "bar":
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={barData}>
+            <BarChart data={data || fallbackBarData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} />
-              <YAxis stroke="#9ca3af" fontSize={12} />
+              <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} tickFormatter={(str) => str.length > 10 ? str.substring(0, 10) + '...' : str} />
+              <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={yAxisFormatter} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#1e293b",
@@ -107,22 +116,23 @@ export function ChartCard({ title, type }: ChartCardProps) {
         );
 
       case "pie":
+        const pieDataset = data || fallbackPieData;
         return (
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={pieData}
+                data={pieDataset}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
                 label={({ name, percent }) =>
-                  `${name} ${(percent * 100).toFixed(0)}%`
+                  `${name.length > 8 ? name.substring(0, 8) + '...' : name} ${(percent * 100).toFixed(0)}%`
                 }
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
               >
-                {pieData.map((entry, index) => (
+                {pieDataset.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={COLORS[index % COLORS.length]}
@@ -144,10 +154,10 @@ export function ChartCard({ title, type }: ChartCardProps) {
       case "area":
         return (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={areaData}>
+            <AreaChart data={data || fallbackAreaData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} />
-              <YAxis stroke="#9ca3af" fontSize={12} />
+              <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} tickFormatter={(str) => str.length > 10 ? str.substring(0, 10) + '...' : str} />
+              <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={yAxisFormatter} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#1e293b",

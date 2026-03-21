@@ -39,7 +39,7 @@ export function ChatMessage({ type, content }: ChatMessageProps) {
               : "bg-[#1e293b] text-gray-100 border border-gray-700"
           }`}
         >
-          <p className="text-sm leading-relaxed">{content}</p>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{content}</p>
         </div>
       </div>
     </motion.div>

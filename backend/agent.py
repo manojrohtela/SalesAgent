@@ -1,8 +1,8 @@
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import pandas as pd
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -33,8 +33,14 @@ DEMO_CSV_PATH = os.path.join(DATA_DIR, "demo_dataset.csv")
 
 class AnalysisResponse(BaseModel):
     structured_report: str
-    charts: dict
-    follow_up_questions: list
+    charts: dict[str, Any]
+    follow_up_questions: list[str]
+    dataset_summary: str
+    key_insights: list[str]
+    visual_analysis: list[str]
+    business_recommendations: list[str]
+    action_plan: list[str]
+    stats_snapshot: dict[str, Any]
 
 
 def _ensure_demo_dataset() -> pd.DataFrame:
@@ -92,24 +98,45 @@ def _run_full_analysis(df: pd.DataFrame, user_question: Optional[str] = "") -> A
         structured_report=structured_report,
         charts=charts,
         follow_up_questions=follow_up_questions,
+        dataset_summary=result.dataset_summary,
+        key_insights=result.key_insights,
+        visual_analysis=result.visual_analysis,
+        business_recommendations=result.business_recommendations,
+        action_plan=result.action_plan,
+        stats_snapshot=result.stats_snapshot,
     )
 
 
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze(
-    use_demo: bool = True,
-    question: Optional[str] = "",
+    use_demo: bool = Form(default=True),
+    demo_dataset_name: Optional[str] = Form(default=None),
+    question: Optional[str] = Form(default=""),
     file: Optional[UploadFile] = File(default=None),
 ):
     """
     Main endpoint for autonomous analysis and Q&A.
 
     - If a CSV is uploaded, it is used.
+    - If a specific demo dataset name is provided, it is loaded.
     - Otherwise, a realistic demo dataset is generated or loaded.
     - The agent always returns a structured report, charts, and proactive follow-up questions.
     """
     if file is not None:
         df = _read_uploaded_csv(file)
+    elif demo_dataset_name and demo_dataset_name.endswith(".csv"):
+        file_path = os.path.join(DATA_DIR, os.path.basename(demo_dataset_name))
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path, encoding='utf-8', encoding_errors='replace')
+            df.columns = df.columns.astype(str).str.strip()
+            for col in df.columns:
+                if "date" in col.lower() or "time" in col.lower():
+                    try:
+                        df[col] = pd.to_datetime(df[col], errors="coerce")
+                    except Exception:
+                        pass
+        else:
+            df = _ensure_demo_dataset()
     elif use_demo:
         df = _ensure_demo_dataset()
     else:
@@ -127,4 +154,3 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("backend.agent:app", host="0.0.0.0", port=8000, reload=True)
-

@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 import numpy as np
 import pandas as pd
 
@@ -11,8 +11,8 @@ class AnalysisResult:
     visual_analysis: List[str]
     business_recommendations: List[str]
     action_plan: List[str]
-    charts: Dict[str, str]
-    stats_snapshot: Dict[str, str]
+    charts: Dict[str, Any]
+    stats_snapshot: Dict[str, Any]
 
 def _ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
@@ -54,6 +54,15 @@ def analyze_dataset(df: pd.DataFrame, charts_dir: str) -> AnalysisResult:
     # Top & Bottom Categories logic
     key_insights = []
     stats = {}
+    stats["metric_name"] = str(metric)
+    stats["total_metric"] = float(df[metric].sum())
+    stats["average_metric"] = float(df[metric].mean())
+    stats["row_count"] = int(n_rows)
+    stats["column_count"] = int(n_cols)
+
+    if date_cols and not pd.isna(df[date_cols[0]].min()):
+        stats["date_range_start"] = str(df[date_cols[0]].min().date())
+        stats["date_range_end"] = str(df[date_cols[0]].max().date())
     
     if cat_cols:
         cat1 = cat_cols[0]
@@ -77,10 +86,22 @@ def analyze_dataset(df: pd.DataFrame, charts_dir: str) -> AnalysisResult:
             key_insights.append(f"Top {cat2}: {stats['strongest_cat2']} ({by_cat2.max():,.0f})")
             key_insights.append(f"Weakest {cat2}: {stats['weakest_cat2']} ({by_cat2.min():,.0f})")
         else:
-            stats.update({"strongest_cat2": "N/A", "weakest_cat2": "N/A", "cat2_label": "Segment"})
+            stats.update({
+                "strongest_cat2": stats["top_cat1"],
+                "weakest_cat2": stats["weakest_cat1"],
+                "cat2_label": str(cat1),
+                "strongest_region": stats["top_cat1"],
+                "weakest_region": stats["weakest_cat1"],
+            })
     else:
-        stats.update({"top_cat1": "N/A", "weakest_cat1": "N/A", "cat1_name": "Category"})
-        stats.update({"strongest_cat2": "N/A", "weakest_cat2": "N/A", "cat2_label": "Segment"})
+        stats.update({"top_cat1": "Overall", "weakest_cat1": "Overall", "cat1_name": "Category"})
+        stats.update({
+            "strongest_cat2": "Overall",
+            "weakest_cat2": "Overall",
+            "cat2_label": "Dataset",
+            "strongest_region": "Overall",
+            "weakest_region": "Overall",
+        })
 
     # Distribution Analysis & Outliers
     mean_val = df[metric].mean()
@@ -111,6 +132,12 @@ def analyze_dataset(df: pd.DataFrame, charts_dir: str) -> AnalysisResult:
     if date_cols:
         daily = df.groupby(date_cols[0])[metric].sum().reset_index().sort_values(date_cols[0])
         if len(daily) > 2:
+            peak_row = daily.loc[daily[metric].idxmax()]
+            trough_row = daily.loc[daily[metric].idxmin()]
+            stats["peak_period_name"] = str(peak_row[date_cols[0]].date())
+            stats["peak_period_value"] = float(peak_row[metric])
+            stats["low_period_name"] = str(trough_row[date_cols[0]].date())
+            stats["low_period_value"] = float(trough_row[metric])
             x = np.arange(len(daily))
             y = daily[metric].values
             
@@ -125,11 +152,55 @@ def analyze_dataset(df: pd.DataFrame, charts_dir: str) -> AnalysisResult:
             forecast = (slope * next_x) + intercept
             key_insights.append(f"Next period's {metric.title()} is estimated at {forecast:,.0f} based on predictive linear trends.")
 
-    # Generate Dummy/Standard charts for backend compatibility
+    # Generate React Recharts compatible JSON data
     charts = {}
+    
+    try:
+        if date_cols:
+            # daily trend
+            daily_sum = df.groupby(date_cols[0])[metric].sum().reset_index().sort_values(date_cols[0])
+            daily_sum[date_cols[0]] = daily_sum[date_cols[0]].dt.strftime('%b %d')
+            charts["lineData"] = daily_sum.rename(columns={date_cols[0]: "name", metric: "value"}).to_dict(orient="records")
+            
+            # monthly area
+            df_m = df.copy()
+            df_m['month'] = df_m[date_cols[0]].dt.strftime('%b')
+            monthly_sum = df_m.groupby('month')[metric].sum().reset_index()
+            # Sort by actual month order
+            months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+            monthly_sum['m_val'] = pd.Categorical(monthly_sum['month'], categories=months, ordered=True)
+            monthly_sum = monthly_sum.sort_values('m_val').drop('m_val', axis=1)
+            charts["areaData"] = monthly_sum.rename(columns={"month": "name", metric: "value"}).to_dict(orient="records")
+        else:
+            charts["lineData"] = [{"name": "All", "value": int(df[metric].sum())}]
+            charts["areaData"] = [{"name": "All", "value": int(df[metric].sum())}]
+
+        if cat_cols:
+            cat1 = cat_cols[0]
+            by_cat1 = df.groupby(cat1)[metric].sum().sort_values(ascending=False).head(5).reset_index()
+            charts["barData"] = by_cat1.rename(columns={cat1: "name", metric: "value"}).to_dict(orient="records")
+
+            if len(cat_cols) > 1:
+                cat2 = cat_cols[1]
+                by_cat2 = df.groupby(cat2)[metric].sum().sort_values(ascending=False).head(4).reset_index()
+                charts["pieData"] = by_cat2.rename(columns={cat2: "name", metric: "value"}).to_dict(orient="records")
+            else:
+                charts["pieData"] = by_cat1.rename(columns={cat1: "name", metric: "value"}).head(4).to_dict(orient="records")
+        else:
+            charts["barData"] = [{"name": "Overall", "value": int(df[metric].sum())}]
+            charts["pieData"] = [{"name": "Overall", "value": int(df[metric].sum())}]
+            
+        # Convert values to native int/float to ensure JSON serialization compatibility
+        for k in charts:
+            for item in charts[k]:
+                item['value'] = float(item['value']) if pd.notna(item['value']) else 0.0
+                item['name'] = str(item['name'])
+
+    except Exception as e:
+        print(f"Error generating chart data: {e}")
+        charts = {}
+        
     visual_analysis = ["Dynamic visualizations based on the dataset structure."]
-    # The frontend ignores these pngs anyway, but we return an empty dict or lightweight png to satisfy typing if strictly needed.
-    # To be safe and save compute, we skip png generation since frontend uses Plotly.
     
     business_recommendations = [
         f"Investigate top performing segments in the data to understand the drivers behind {metric}.",
