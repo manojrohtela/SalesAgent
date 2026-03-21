@@ -10,6 +10,7 @@ import { Container } from "./ui/Container";
 import { Section } from "./ui/Section";
 import { useData } from "../DataContext";
 import { analyzeDataset, warmBackend } from "../api";
+import { ThemeToggle } from "./ThemeToggle";
 
 const dummyDatasets = [
   {
@@ -97,8 +98,12 @@ export function Landing() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white relative overflow-hidden">
+    <div className="app-shell min-h-screen relative overflow-hidden">
       <BackgroundGradient />
+
+      <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
+        <ThemeToggle />
+      </div>
 
       <Container maxWidth="xl" className="py-12 sm:py-20 relative z-10">
         {/* Header */}
@@ -107,14 +112,14 @@ export function Landing() {
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
               Sales Agent
             </h1>
-            <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto px-4">
+            <p className="app-subtle-text text-lg sm:text-xl max-w-2xl mx-auto px-4">
               Turn your data into actionable insights with AI
             </p>
           </div>
         </Section>
 
         {error && (
-            <div className="text-red-400 text-center mb-4 bg-red-400/10 py-2 rounded">
+            <div className="mb-4 rounded bg-red-500/10 py-2 text-center text-red-500 dark:text-red-300">
               {error}
             </div>
         )}

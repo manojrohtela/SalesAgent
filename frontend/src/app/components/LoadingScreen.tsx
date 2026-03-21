@@ -21,7 +21,7 @@ export function LoadingScreen() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center relative overflow-hidden">
+    <div className="app-shell min-h-screen flex items-center justify-center relative overflow-hidden">
       <BackgroundGradient variant="centered" />
 
       <div className="text-center relative z-10">
@@ -45,7 +45,7 @@ export function LoadingScreen() {
         <motion.h2
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-3xl font-bold text-white mb-4"
+          className="mb-4 text-3xl font-bold text-foreground"
         >
           Analyzing your data...
         </motion.h2>
@@ -79,11 +79,11 @@ export function LoadingScreen() {
                   }}
                 />
               ) : (
-                <div className="w-5 h-5 border-2 border-gray-600 rounded-full" />
+                <div className="h-5 w-5 rounded-full border-2 border-border" />
               )}
               <span
                 className={`text-lg ${
-                  currentStep >= index ? "text-white" : "text-gray-500"
+                  currentStep >= index ? "text-foreground" : "app-subtle-text"
                 }`}
               >
                 {step}
@@ -93,7 +93,7 @@ export function LoadingScreen() {
         </div>
 
         {/* Progress Bar */}
-        <div className="mt-8 w-64 h-1.5 bg-gray-700 rounded-full mx-auto overflow-hidden">
+        <div className="mt-8 mx-auto h-1.5 w-64 overflow-hidden rounded-full bg-border">
           <motion.div
             className="h-full bg-gradient-to-r from-indigo-500 to-purple-600"
             initial={{ width: "0%" }}

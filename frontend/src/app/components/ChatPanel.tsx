@@ -128,11 +128,11 @@ export function ChatPanel({ initialMessages = [], className = "", onClose }: Cha
   };
 
   return (
-    <div className={`flex h-full flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#0f172a]/95 shadow-2xl shadow-black/40 backdrop-blur-xl ${className}`}>
+    <div className={`app-chat-surface flex h-full flex-col overflow-hidden rounded-[28px] border backdrop-blur-xl ${className}`}>
       <ChatPanelHeader onClose={onClose} />
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.08),_rgba(15,23,42,0.15)_32%,_transparent_70%)] p-5 space-y-4">
+      <div className="app-accent-ai flex-1 overflow-y-auto p-5 space-y-4">
         {messages.map((message) => (
           <ChatMessage
             key={message.id}
@@ -147,7 +147,7 @@ export function ChatPanel({ initialMessages = [], className = "", onClose }: Cha
       </div>
 
       {/* Chat Input */}
-      <div className="border-t border-gray-800/80 bg-[#111827]/80 p-4">
+      <div className="border-t app-surface-inset p-4">
         <div className="flex gap-2">
           <input
             type="text"
@@ -155,7 +155,7 @@ export function ChatPanel({ initialMessages = [], className = "", onClose }: Cha
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
             placeholder="Ask anything about your data..."
-            className="flex-1 rounded-2xl border border-white/10 bg-[#0b1220] px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            className="app-chat-input flex-1 rounded-2xl border px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
           />
           <button
             onClick={handleSendMessage}

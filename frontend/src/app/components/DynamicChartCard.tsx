@@ -50,6 +50,14 @@ interface PlotlyFigure {
 }
 
 const COLORS = ["#6366f1", "#ec4899", "#10b981", "#f59e0b", "#3b82f6", "#8b5cf6"];
+const gridStroke = "var(--border)";
+const axisStroke = "var(--muted-foreground)";
+const tooltipContentStyle = {
+  backgroundColor: "var(--popover)",
+  border: "1px solid var(--border)",
+  borderRadius: "12px",
+  color: "var(--popover-foreground)",
+};
 
 function normalizePlotlyFigure(chart: unknown): PlotlyFigure | null {
   if (!chart || typeof chart !== "object") {
@@ -244,6 +252,22 @@ export function DynamicChartCard({ chart, prompt, createdAt }: DynamicChartCardP
 
   const pieData = hasPieTrace ? buildPieData(figure.data[0]) : [];
   const histogramData = hasHistogramTrace ? buildHistogramData(figure.data[0]) : [];
+  const renderPieLabel = (props: any) => {
+    const { name, percent, x, y, textAnchor, dominantBaseline } = props;
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="var(--foreground)"
+        fontSize={12}
+        textAnchor={textAnchor}
+        dominantBaseline={dominantBaseline}
+      >
+        {`${name} ${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
 
   return (
     <motion.div
@@ -255,16 +279,16 @@ export function DynamicChartCard({ chart, prompt, createdAt }: DynamicChartCardP
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-300/80 mb-2">AI Chart</p>
-            <h3 className="text-lg font-semibold text-gray-100">{title}</h3>
+            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
           </div>
           {createdAt ? (
-            <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">
+            <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-700 dark:text-cyan-100">
               {new Date(createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
           ) : null}
         </div>
         {prompt ? (
-          <p className="mb-4 rounded-2xl border border-white/8 bg-white/5 px-4 py-3 text-sm text-slate-300">
+          <p className="app-surface-muted mb-4 rounded-2xl border px-4 py-3 text-sm text-muted-foreground">
             {prompt}
           </p>
         ) : null}
@@ -274,60 +298,50 @@ export function DynamicChartCard({ chart, prompt, createdAt }: DynamicChartCardP
               <PieChart>
                 <Pie
                   data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={86}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  labelLine={false}
-                >
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={86}
+                label={renderPieLabel}
+                labelLine={false}
+              >
                   {pieData.map((entry, index) => (
                     <Cell key={`${entry.name}-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1e293b",
-                    border: "1px solid #374151",
-                    borderRadius: "8px",
-                    color: "#fff",
-                  }}
-                />
+                <Tooltip contentStyle={tooltipContentStyle} />
               </PieChart>
             </ResponsiveContainer>
           ) : hasHistogramTrace ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={histogramData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} />
-                <YAxis stroke="#9ca3af" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1e293b",
-                    border: "1px solid #374151",
-                    borderRadius: "8px",
-                    color: "#fff",
-                  }}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis dataKey="name" stroke={axisStroke} fontSize={12} tick={{ fill: axisStroke }} />
+                <YAxis stroke={axisStroke} fontSize={12} tick={{ fill: axisStroke }} />
+                <Tooltip contentStyle={tooltipContentStyle} />
                 <Bar dataKey="value" fill={COLORS[0]} radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : hasBarTrace ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={cartesianData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} label={{ value: xAxisLabel, position: "insideBottom", offset: -4 }} />
-                <YAxis stroke="#9ca3af" fontSize={12} label={{ value: yAxisLabel, angle: -90, position: "insideLeft" }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1e293b",
-                    border: "1px solid #374151",
-                    borderRadius: "8px",
-                    color: "#fff",
-                  }}
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis
+                  dataKey="name"
+                  stroke={axisStroke}
+                  fontSize={12}
+                  tick={{ fill: axisStroke }}
+                  label={{ value: xAxisLabel, position: "insideBottom", offset: -4, fill: axisStroke }}
                 />
-                <Legend />
+                <YAxis
+                  stroke={axisStroke}
+                  fontSize={12}
+                  tick={{ fill: axisStroke }}
+                  label={{ value: yAxisLabel, angle: -90, position: "insideLeft", fill: axisStroke }}
+                />
+                <Tooltip contentStyle={tooltipContentStyle} />
+                <Legend formatter={(value) => <span style={{ color: "var(--foreground)" }}>{String(value)}</span>} />
                 {series.map((item) => (
                   <Bar key={item.key} dataKey={item.key} fill={item.color} radius={[8, 8, 0, 0]} />
                 ))}
@@ -336,18 +350,22 @@ export function DynamicChartCard({ chart, prompt, createdAt }: DynamicChartCardP
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={cartesianData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} label={{ value: xAxisLabel, position: "insideBottom", offset: -4 }} />
-                <YAxis stroke="#9ca3af" fontSize={12} label={{ value: yAxisLabel, angle: -90, position: "insideLeft" }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1e293b",
-                    border: "1px solid #374151",
-                    borderRadius: "8px",
-                    color: "#fff",
-                  }}
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis
+                  dataKey="name"
+                  stroke={axisStroke}
+                  fontSize={12}
+                  tick={{ fill: axisStroke }}
+                  label={{ value: xAxisLabel, position: "insideBottom", offset: -4, fill: axisStroke }}
                 />
-                <Legend />
+                <YAxis
+                  stroke={axisStroke}
+                  fontSize={12}
+                  tick={{ fill: axisStroke }}
+                  label={{ value: yAxisLabel, angle: -90, position: "insideLeft", fill: axisStroke }}
+                />
+                <Tooltip contentStyle={tooltipContentStyle} />
+                <Legend formatter={(value) => <span style={{ color: "var(--foreground)" }}>{String(value)}</span>} />
                 {series.map((item) => (
                   <Line
                     key={item.key}

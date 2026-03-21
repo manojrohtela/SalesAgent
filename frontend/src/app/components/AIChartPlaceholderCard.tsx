@@ -13,12 +13,12 @@ export function AIChartPlaceholderCard({ prompt }: AIChartPlaceholderCardProps) 
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
     >
-      <AppCard className="overflow-hidden border-cyan-400/20 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.15),_rgba(15,23,42,0.96)_60%)]">
+      <AppCard className="app-accent-ai overflow-hidden border">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-300/80 mb-2">AI Chart</p>
-            <h3 className="text-lg font-semibold text-white">Generating your chart</h3>
-            <p className="mt-3 max-w-2xl rounded-2xl border border-white/8 bg-white/5 px-4 py-3 text-sm text-slate-300">
+            <h3 className="text-lg font-semibold text-foreground">Generating your chart</h3>
+            <p className="app-surface-muted mt-3 max-w-2xl rounded-2xl border px-4 py-3 text-sm text-muted-foreground">
               {prompt}
             </p>
           </div>
@@ -33,7 +33,7 @@ export function AIChartPlaceholderCard({ prompt }: AIChartPlaceholderCardProps) 
             animate={{ opacity: [0.35, 0.9, 0.35], scaleX: [0.96, 1, 0.96] }}
             transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
           />
-          <div className="grid h-64 grid-cols-12 items-end gap-3 rounded-3xl border border-white/8 bg-slate-950/40 p-4">
+          <div className="app-placeholder-grid grid h-64 grid-cols-12 items-end gap-3 rounded-3xl border p-4">
             {[32, 54, 40, 72, 58, 84, 48, 64, 77, 61, 89, 70].map((height, index) => (
               <motion.div
                 key={`placeholder-bar-${index}`}

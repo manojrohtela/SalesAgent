@@ -12,10 +12,10 @@ export function TypingIndicator() {
         <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
           <Bot className="w-4 h-4" />
         </div>
-        <div className="bg-[#1e293b] border border-gray-700 rounded-2xl px-4 py-3">
+        <div className="app-surface-strong rounded-2xl border px-4 py-3">
           <div className="flex gap-1">
             <motion.div
-              className="w-2 h-2 bg-gray-500 rounded-full"
+              className="h-2 w-2 rounded-full bg-muted-foreground/70"
               animate={{ y: [0, -5, 0] }}
               transition={{
                 duration: 0.6,
@@ -24,7 +24,7 @@ export function TypingIndicator() {
               }}
             />
             <motion.div
-              className="w-2 h-2 bg-gray-500 rounded-full"
+              className="h-2 w-2 rounded-full bg-muted-foreground/70"
               animate={{ y: [0, -5, 0] }}
               transition={{
                 duration: 0.6,
@@ -33,7 +33,7 @@ export function TypingIndicator() {
               }}
             />
             <motion.div
-              className="w-2 h-2 bg-gray-500 rounded-full"
+              className="h-2 w-2 rounded-full bg-muted-foreground/70"
               animate={{ y: [0, -5, 0] }}
               transition={{
                 duration: 0.6,

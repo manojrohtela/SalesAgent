@@ -35,6 +35,12 @@ function formatNumber(value: number | null | undefined) {
 
 export function ForecastCard({ forecast }: ForecastCardProps) {
   const chartData = forecast?.data ?? [];
+  const tooltipContentStyle = {
+    backgroundColor: "var(--popover)",
+    border: "1px solid var(--border)",
+    borderRadius: "12px",
+    color: "var(--popover-foreground)",
+  };
 
   return (
     <motion.div
@@ -42,18 +48,18 @@ export function ForecastCard({ forecast }: ForecastCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
     >
-      <AppCard className="h-full overflow-hidden border-cyan-400/20 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_rgba(15,23,42,0.97)_58%)]">
+      <AppCard className="app-accent-cyan h-full overflow-hidden border">
         <div className="mb-5 flex items-start gap-4">
           <div className="rounded-2xl bg-gradient-to-br from-cyan-400/25 to-blue-500/10 px-4 py-4 text-cyan-100">
             <TrendingUp className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Forecast Engine</p>
-            <h3 className="mt-2 text-xl font-semibold text-white">Forecast With Confidence Band</h3>
+            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Forecast Engine</p>
+            <h3 className="mt-2 text-xl font-semibold text-foreground">Forecast With Confidence Band</h3>
           </div>
         </div>
 
-        <p className="mb-5 text-sm leading-7 text-slate-300">
+        <p className="mb-5 text-sm leading-7 text-muted-foreground">
           {forecast?.summary ?? "Forecasting becomes available when the dataset includes enough dated history."}
         </p>
 
@@ -61,18 +67,11 @@ export function ForecastCard({ forecast }: ForecastCardProps) {
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={formatNumber} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#0f172a",
-                    border: "1px solid #334155",
-                    borderRadius: "12px",
-                    color: "#fff",
-                  }}
-                />
-                <Legend />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} tick={{ fill: "var(--muted-foreground)" }} />
+                <YAxis stroke="var(--muted-foreground)" fontSize={12} tick={{ fill: "var(--muted-foreground)" }} tickFormatter={formatNumber} />
+                <Tooltip contentStyle={tooltipContentStyle} />
+                <Legend formatter={(value) => <span style={{ color: "var(--foreground)" }}>{String(value)}</span>} />
                 <Area
                   type="monotone"
                   dataKey="bandBase"
@@ -135,7 +134,7 @@ export function ForecastCard({ forecast }: ForecastCardProps) {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] px-4 py-6 text-sm leading-7 text-slate-400">
+          <div className="app-surface-muted rounded-2xl border border-dashed px-4 py-6 text-sm leading-7 text-muted-foreground">
             Add a numeric metric with a usable date column and the forecast section will populate automatically.
           </div>
         )}

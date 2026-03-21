@@ -29,9 +29,9 @@ export function SummaryMetricCard({
         <div className={`mb-5 inline-flex rounded-2xl bg-gradient-to-br px-4 py-4 ${accentClassName}`}>
           <Icon className="h-6 w-6" />
         </div>
-        <p className="text-xs uppercase tracking-[0.28em] text-slate-400">{label}</p>
-        <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
-        {helper ? <p className="mt-3 text-sm leading-relaxed text-slate-400">{helper}</p> : null}
+        <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">{label}</p>
+        <p className="mt-3 text-2xl font-semibold text-foreground">{value}</p>
+        {helper ? <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{helper}</p> : null}
       </AppCard>
     </motion.div>
   );

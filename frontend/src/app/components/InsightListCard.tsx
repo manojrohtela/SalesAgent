@@ -32,16 +32,16 @@ export function InsightListCard({
           </div>
           <div>
             {eyebrow ? (
-              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">{eyebrow}</p>
+              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">{eyebrow}</p>
             ) : null}
-            <h3 className="mt-2 text-xl font-semibold text-white">{title}</h3>
+            <h3 className="mt-2 text-xl font-semibold text-foreground">{title}</h3>
           </div>
         </div>
         <div className="space-y-3">
           {items.map((item, index) => (
             <div
               key={`${title}-${index}`}
-              className="rounded-2xl border border-white/8 bg-white/5 px-4 py-3 text-sm leading-relaxed text-slate-200"
+              className="app-surface-muted rounded-2xl border px-4 py-3 text-sm leading-relaxed text-foreground"
             >
               {item}
             </div>

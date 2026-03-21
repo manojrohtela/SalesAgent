@@ -23,7 +23,8 @@ export function AppCard({
   className = "",
   padding = "md",
 }: AppCardProps) {
-  const baseClasses = "bg-[#1e293b] rounded-xl border border-gray-700/50 transition-all duration-300";
+  const baseClasses =
+    "app-surface-strong rounded-xl border text-card-foreground transition-all duration-300 backdrop-blur-sm";
   const hoverClasses = hover
     ? "hover:border-indigo-500/50 hover:shadow-indigo-500/10 shadow-lg cursor-pointer"
     : "shadow-lg";

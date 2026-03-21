@@ -318,7 +318,7 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white relative overflow-hidden">
+    <div className="app-shell relative min-h-screen overflow-hidden">
       <BackgroundGradient variant="subtle" />
 
       <PageHeader
@@ -327,7 +327,7 @@ export function Dashboard() {
         action={
           <button
             onClick={() => navigate("/")}
-            className="rounded-full border border-white/10 bg-white/5 px-5 py-2 font-medium text-slate-100 transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-400/40 hover:bg-cyan-400/10"
+            className="app-surface-muted rounded-full border px-5 py-2 font-medium text-foreground transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-400/40 hover:bg-cyan-400/10"
           >
             Change Data
           </button>
@@ -340,30 +340,30 @@ export function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <AppCard className="overflow-hidden border-cyan-400/20 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.16),_rgba(15,23,42,0.98)_52%)]">
+          <AppCard className="app-hero-surface overflow-hidden border">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-3xl">
                 <p className="text-xs uppercase tracking-[0.3em] text-cyan-300/80">Dataset Command Center</p>
-                <h2 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">
+                <h2 className="mt-3 text-3xl font-semibold text-foreground sm:text-4xl">
                   Dynamic metrics, planning tools, six core charts, and AI chart history
                 </h2>
-                <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-300 sm:text-base">
+                <p className="mt-4 whitespace-pre-line text-sm leading-7 text-muted-foreground sm:text-base">
                   {analysisData.dataset_summary}
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="rounded-3xl border border-white/10 bg-white/5 px-5 py-4 text-sm text-slate-200">
+                <div className="app-surface-muted rounded-3xl border px-5 py-4 text-sm text-foreground">
                   {dateRangeLabel || "Live analysis ready for exploration"}
                 </div>
-                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[#08111f]/80 p-1">
+                <div className="app-surface-inset flex items-center gap-2 rounded-full border p-1">
                   <button
                     type="button"
                     onClick={() => setChartView("grid")}
                     className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
                       chartView === "grid"
-                        ? "bg-cyan-400/15 text-cyan-100"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-cyan-400/15 text-cyan-700 dark:text-cyan-100"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <LayoutGrid className="h-4 w-4" />
@@ -374,8 +374,8 @@ export function Dashboard() {
                     onClick={() => setChartView("list")}
                     className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
                       chartView === "list"
-                        ? "bg-cyan-400/15 text-cyan-100"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-cyan-400/15 text-cyan-700 dark:text-cyan-100"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <List className="h-4 w-4" />
@@ -413,10 +413,10 @@ export function Dashboard() {
         <section className="space-y-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Visual Intelligence</p>
-              <h3 className="mt-2 text-2xl font-semibold text-white">Core dataset charts</h3>
+              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Visual Intelligence</p>
+              <h3 className="mt-2 text-2xl font-semibold text-foreground">Core dataset charts</h3>
             </div>
-            <p className="text-sm text-slate-400">Six charts are shown by default, and the same grid/list choice also applies to AI Charts.</p>
+            <p className="text-sm text-muted-foreground">Six charts are shown by default, and the same grid/list choice also applies to AI Charts.</p>
           </div>
 
           <div className={chartLayoutClass}>
@@ -440,14 +440,14 @@ export function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
           >
-            <AppCard className="h-full overflow-hidden border-indigo-400/20 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.16),_rgba(15,23,42,0.96)_55%)]">
+            <AppCard className="app-accent-indigo h-full overflow-hidden border">
               <div className="mb-5 flex items-start gap-4">
                 <div className="rounded-2xl bg-gradient-to-br from-indigo-400/25 to-cyan-400/10 px-4 py-4 text-indigo-100">
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Narrative Layer</p>
-                  <h3 className="mt-2 text-xl font-semibold text-white">Full Strategic AI Analysis</h3>
+                  <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Narrative Layer</p>
+                  <h3 className="mt-2 text-xl font-semibold text-foreground">Full Strategic AI Analysis</h3>
                 </div>
               </div>
 
@@ -455,7 +455,7 @@ export function Dashboard() {
                 {analysisSections.map((section, index) => (
                   <div
                     key={`analysis-section-${index}`}
-                    className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4 text-sm leading-7 text-slate-200 whitespace-pre-wrap"
+                    className="app-surface-muted whitespace-pre-wrap rounded-2xl border px-4 py-4 text-sm leading-7 text-muted-foreground"
                   >
                     {section}
                   </div>
@@ -503,10 +503,10 @@ export function Dashboard() {
         <section className="space-y-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Generated During Chat</p>
-              <h3 className="mt-2 text-2xl font-semibold text-white">AI Charts</h3>
+              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Generated During Chat</p>
+              <h3 className="mt-2 text-2xl font-semibold text-foreground">AI Charts</h3>
             </div>
-            <p className="text-sm text-slate-400">New AI charts are appended here and older ones stay visible.</p>
+            <p className="text-sm text-muted-foreground">New AI charts are appended here and older ones stay visible.</p>
           </div>
 
           {pendingAiChartPrompt || aiChartEntries.length > 0 ? (
@@ -522,11 +522,11 @@ export function Dashboard() {
               ))}
             </div>
           ) : (
-            <AppCard className="border-dashed border-white/15 bg-white/[0.03]">
+            <AppCard className="app-surface-muted border-dashed">
               <div className="flex flex-col gap-3 py-6 text-center">
-                <p className="text-xs uppercase tracking-[0.28em] text-slate-500">AI Charts</p>
-                <h4 className="text-xl font-semibold text-white">Generated charts will appear here</h4>
-                <p className="mx-auto max-w-2xl text-sm leading-7 text-slate-400">
+                <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">AI Charts</p>
+                <h4 className="text-xl font-semibold text-foreground">Generated charts will appear here</h4>
+                <p className="mx-auto max-w-2xl text-sm leading-7 text-muted-foreground">
                   Ask the assistant for a pie chart, bar chart, trend, forecast, or comparison and each result will be
                   added here without replacing the older ones.
                 </p>
@@ -559,14 +559,14 @@ export function Dashboard() {
         onClick={() => setIsChatOpen((open) => !open)}
         whileHover={{ y: -2 }}
         whileTap={{ scale: 0.98 }}
-        className="fixed bottom-6 right-4 z-50 flex items-center gap-3 rounded-full border border-cyan-400/25 bg-[#08111f]/95 px-5 py-4 text-sm font-medium text-white shadow-2xl shadow-cyan-950/50 backdrop-blur-xl sm:right-6"
+        className="app-command-surface fixed bottom-6 right-4 z-50 flex items-center gap-3 rounded-full border px-5 py-4 text-sm font-medium text-foreground shadow-2xl backdrop-blur-xl sm:right-6"
         aria-expanded={isChatOpen}
       >
         <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-cyan-400 via-indigo-500 to-fuchsia-500 shadow-lg shadow-cyan-500/25">
           <Bot className="h-5 w-5 text-white" />
         </span>
         <span className="text-left">
-          <span className="block text-xs uppercase tracking-[0.26em] text-cyan-200/75">AI Assistant</span>
+          <span className="block text-xs uppercase tracking-[0.26em] text-cyan-600/80 dark:text-cyan-200/75">AI Assistant</span>
           <span className="block text-sm">{isChatOpen ? "Hide chat" : "Open chat"}</span>
         </span>
       </motion.button>

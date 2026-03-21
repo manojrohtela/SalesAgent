@@ -56,14 +56,39 @@ const fallbackAreaData = [
 ];
 
 const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#3b82f6"];
+const gridStroke = "var(--border)";
+const axisStroke = "var(--muted-foreground)";
+const tooltipContentStyle = {
+  backgroundColor: "var(--popover)",
+  border: "1px solid var(--border)",
+  borderRadius: "12px",
+  color: "var(--popover-foreground)",
+};
 
 export function ChartCard({ title, type, data }: ChartCardProps) {
-
   // Custom Formatter to abbreviate long names if needed, or format numbers
   const yAxisFormatter = (value: number) => {
     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
     if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
     return value.toString();
+  };
+
+  const renderPieLabel = (props: any) => {
+    const { name, percent, x, y, textAnchor, dominantBaseline } = props;
+    const label = `${name.length > 8 ? name.substring(0, 8) + "..." : name} ${(percent * 100).toFixed(0)}%`;
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="var(--foreground)"
+        fontSize={12}
+        textAnchor={textAnchor}
+        dominantBaseline={dominantBaseline}
+      >
+        {label}
+      </text>
+    );
   };
 
   const renderChart = () => {
@@ -72,17 +97,10 @@ export function ChartCard({ title, type, data }: ChartCardProps) {
         return (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data || fallbackLineData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} tickFormatter={(str) => str.length > 10 ? str.substring(0, 10) + '...' : str} />
-              <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={yAxisFormatter} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1e293b",
-                  border: "1px solid #374151",
-                  borderRadius: "8px",
-                  color: "#fff",
-                }}
-              />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis dataKey="name" stroke={axisStroke} fontSize={12} tick={{ fill: axisStroke }} tickFormatter={(str) => str.length > 10 ? str.substring(0, 10) + '...' : str} />
+              <YAxis stroke={axisStroke} fontSize={12} tickFormatter={yAxisFormatter} />
+              <Tooltip contentStyle={tooltipContentStyle} />
               <Line
                 type="monotone"
                 dataKey="value"
@@ -99,17 +117,10 @@ export function ChartCard({ title, type, data }: ChartCardProps) {
         return (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data || fallbackBarData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} tickFormatter={(str) => str.length > 10 ? str.substring(0, 10) + '...' : str} />
-              <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={yAxisFormatter} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1e293b",
-                  border: "1px solid #374151",
-                  borderRadius: "8px",
-                  color: "#fff",
-                }}
-              />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis dataKey="name" stroke={axisStroke} fontSize={12} tick={{ fill: axisStroke }} tickFormatter={(str) => str.length > 10 ? str.substring(0, 10) + '...' : str} />
+              <YAxis stroke={axisStroke} fontSize={12} tickFormatter={yAxisFormatter} />
+              <Tooltip contentStyle={tooltipContentStyle} />
               <Bar dataKey="value" fill="#6366f1" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -125,9 +136,7 @@ export function ChartCard({ title, type, data }: ChartCardProps) {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) =>
-                  `${name.length > 8 ? name.substring(0, 8) + '...' : name} ${(percent * 100).toFixed(0)}%`
-                }
+                label={renderPieLabel}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
@@ -139,14 +148,7 @@ export function ChartCard({ title, type, data }: ChartCardProps) {
                   />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1e293b",
-                  border: "1px solid #374151",
-                  borderRadius: "8px",
-                  color: "#fff",
-                }}
-              />
+              <Tooltip contentStyle={tooltipContentStyle} />
             </PieChart>
           </ResponsiveContainer>
         );
@@ -155,17 +157,10 @@ export function ChartCard({ title, type, data }: ChartCardProps) {
         return (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data || fallbackAreaData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#9ca3af" fontSize={12} tickFormatter={(str) => str.length > 10 ? str.substring(0, 10) + '...' : str} />
-              <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={yAxisFormatter} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1e293b",
-                  border: "1px solid #374151",
-                  borderRadius: "8px",
-                  color: "#fff",
-                }}
-              />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis dataKey="name" stroke={axisStroke} fontSize={12} tick={{ fill: axisStroke }} tickFormatter={(str) => str.length > 10 ? str.substring(0, 10) + '...' : str} />
+              <YAxis stroke={axisStroke} fontSize={12} tickFormatter={yAxisFormatter} />
+              <Tooltip contentStyle={tooltipContentStyle} />
               <Area
                 type="monotone"
                 dataKey="value"
@@ -190,7 +185,7 @@ export function ChartCard({ title, type, data }: ChartCardProps) {
       transition={{ duration: 0.4 }}
     >
       <AppCard hover>
-        <h3 className="text-lg font-semibold mb-4 text-gray-100">{title}</h3>
+        <h3 className="mb-4 text-lg font-semibold text-foreground">{title}</h3>
         <div className="h-64">{renderChart()}</div>
       </AppCard>
     </motion.div>

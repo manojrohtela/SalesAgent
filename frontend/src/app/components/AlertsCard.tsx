@@ -20,14 +20,14 @@ export function AlertsCard({ alerts = [] }: AlertsCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.05 }}
     >
-      <AppCard className="h-full overflow-hidden border-amber-300/20 bg-[radial-gradient(circle_at_top_right,_rgba(245,158,11,0.14),_rgba(15,23,42,0.97)_60%)]">
+      <AppCard className="app-accent-amber h-full overflow-hidden border">
         <div className="mb-5 flex items-start gap-4">
           <div className="rounded-2xl bg-gradient-to-br from-amber-300/25 to-rose-400/10 px-4 py-4 text-amber-100">
             <BellRing className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-slate-400">AI Watchlist</p>
-            <h3 className="mt-2 text-xl font-semibold text-white">Alerts & Briefing Cadence</h3>
+            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">AI Watchlist</p>
+            <h3 className="mt-2 text-xl font-semibold text-foreground">Alerts & Briefing Cadence</h3>
           </div>
         </div>
 
@@ -35,10 +35,10 @@ export function AlertsCard({ alerts = [] }: AlertsCardProps) {
           {alerts.map((alert) => (
             <div
               key={alert.id}
-              className="rounded-2xl border border-white/8 bg-white/5 p-4"
+              className="app-surface-muted rounded-2xl border p-4"
             >
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <h4 className="text-sm font-semibold text-white">{alert.title}</h4>
+                <h4 className="text-sm font-semibold text-foreground">{alert.title}</h4>
                 <div className="flex items-center gap-2">
                   <span
                     className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.2em] ${
@@ -47,12 +47,12 @@ export function AlertsCard({ alerts = [] }: AlertsCardProps) {
                   >
                     {alert.severity}
                   </span>
-                  <span className="rounded-full border border-white/10 bg-[#08111f]/80 px-3 py-1 text-[11px] text-slate-300">
+                  <span className="app-surface-inset rounded-full border px-3 py-1 text-[11px] text-muted-foreground">
                     {alert.cadence}
                   </span>
                 </div>
               </div>
-              <p className="text-sm leading-7 text-slate-300">{alert.message}</p>
+              <p className="text-sm leading-7 text-muted-foreground">{alert.message}</p>
             </div>
           ))}
         </div>

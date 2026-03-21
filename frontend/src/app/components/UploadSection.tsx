@@ -40,7 +40,7 @@ export function UploadSection({ delay = 0.2, onFileSelect }: UploadSectionProps)
       transition={{ duration: 0.6, delay }}
     >
       <div 
-        className="bg-[#1e293b] rounded-2xl p-12 border-2 border-dashed border-gray-600 hover:border-indigo-500 transition-all duration-300 cursor-pointer group"
+        className="app-surface-strong rounded-2xl border-2 border-dashed p-12 transition-all duration-300 cursor-pointer group hover:border-indigo-500"
         onClick={handleClick}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -57,13 +57,13 @@ export function UploadSection({ delay = 0.2, onFileSelect }: UploadSectionProps)
             <Upload className="w-10 h-10 text-indigo-400" />
           </div>
           <h3 className="text-2xl font-semibold mb-2">Upload CSV</h3>
-          <p className="text-gray-400 mb-6">
+          <p className="app-subtle-text mb-6">
             Drag and drop your file here, or click to browse
           </p>
-          <button className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition-all duration-300 hover:scale-105 shadow-lg shadow-indigo-500/30">
+          <button className="px-8 py-3 rounded-lg bg-indigo-600 font-medium text-white transition-all duration-300 hover:scale-105 hover:bg-indigo-700 shadow-lg shadow-indigo-500/30">
             Choose File
           </button>
-          <p className="text-sm text-gray-500 mt-4">
+          <p className="app-subtle-text mt-4 text-sm">
             Works with any CSV dataset
           </p>
         </div>

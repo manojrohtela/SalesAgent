@@ -25,7 +25,7 @@ export function ChatMessage({ type, content, audit }: ChatMessageProps) {
         <div
           className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
             type === "user"
-              ? "bg-gray-700"
+              ? "app-surface-inset text-foreground"
               : "bg-gradient-to-br from-indigo-500 to-purple-600"
           }`}
         >
@@ -39,7 +39,7 @@ export function ChatMessage({ type, content, audit }: ChatMessageProps) {
           className={`rounded-2xl px-4 py-3 ${
             type === "user"
               ? "bg-indigo-600 text-white"
-              : "bg-[#1e293b] text-gray-100 border border-gray-700"
+              : "app-surface-strong border text-foreground"
           }`}
         >
           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{content}</p>
